@@ -1,0 +1,74 @@
+name: APK Android (pruebas)
+
+# Compila un APK instalable para PROBAR la app en un dispositivo.
+# Está firmado con la clave de depuración de la plantilla: no sirve para Google Play.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'apps/android/**'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/android/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+
+      - name: Comprobaciones previas
+        run: |
+          npm run typecheck
+          npm test -- --ci
+
+      - name: Generar proyecto nativo (expo prebuild)
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Compilar APK release
+        working-directory: apps/android/android
+        env:
+          NODE_ENV: production
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+
+      - name: Información del APK
+        working-directory: apps/android/android/app/build/outputs/apk/release
+        run: |
+          ls -la
+          sha256sum app-release.apk | tee app-release.apk.sha256
+          "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME"/build-tools | sort -V | tail -1)/aapt dump permissions app-release.apk | tee permisos.txt
+          "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME"/build-tools | sort -V | tail -1)/aapt dump badging app-release.apk | grep -E "package:|sdkVersion|targetSdkVersion|native-code" | tee badging.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stoky-apk-${{ github.sha }}
+          path: |
+            apps/android/android/app/build/outputs/apk/release/app-release.apk
+            apps/android/android/app/build/outputs/apk/release/app-release.apk.sha256
+            apps/android/android/app/build/outputs/apk/release/permisos.txt
+            apps/android/android/app/build/outputs/apk/release/badging.txt
+          retention-days: 14
