@@ -158,14 +158,23 @@ Se mantiene `apps/android` como nombre por petición, aunque el código Expo es 
 
 ## 8. Plan de implementación por etapas
 
-| Etapa | Contenido | Verificación |
-|---|---|---|
-| 0 | Análisis, arquitectura, estructura, `.gitignore` | Revisión documental |
-| 1 | Dominio puro: unidades, cantidades, fechas, validación | Jest |
-| 2 | Datos: adaptador, migraciones, repositorios, servicios de inventario y compra | Jest + SQLite real (`node:sqlite`) |
-| 3 | Integraciones: Open Food Facts, planificador de avisos | Jest con `fetch` simulado |
-| 4 | Motor de recetas local + base de recetas | Jest |
-| 5 | Interfaz: pestañas, inventario, compra, caducidades, escáner, recetas, ajustes | `tsc --noEmit`, `expo export`, `expo prebuild` |
-| 6 | Documentación legal y de seguridad | Revisión |
-| 7 | Esqueleto del servidor (FastAPI) y Docker | `pytest` |
-| 8 | Prueba en dispositivo Android real (pendiente: requiere SDK/dispositivo) | Checklist manual en `docs/pruebas.md` |
+| Etapa | Contenido | Verificación | Estado (2026-10-13) |
+|---|---|---|---|
+| 0 | Análisis, arquitectura, estructura, `.gitignore` | Revisión documental | Hecho |
+| 1 | Dominio puro: unidades, cantidades, fechas, validación, códigos de barras | Jest (también con TZ Europe/Madrid y Pacific/Auckland) | Hecho |
+| 2 | Datos: adaptador, migraciones, repositorios, servicios de inventario, compra y ajustes | Jest + SQLite real (`node:sqlite`) | Hecho |
+| 3 | Integraciones: Open Food Facts, planificador de avisos, i18n | Jest con `fetch` simulado | Hecho; **sin probar contra el servicio real** (red bloqueada) |
+| 4 | Motor de recetas local + base de recetas | Jest | Hecho |
+| 5 | Interfaz: pestañas, inventario, compra, caducidades, escáner, recetas, ajustes | `tsc`, pruebas de accesibilidad y textos, `expo export`, `expo prebuild` | Hecho; **sin probar en dispositivo** |
+| 6 | Documentación legal y de pruebas, scripts de secretos y licencias | Revisión; scripts ejecutados | Borradores pendientes de revisión profesional |
+| 7 | Esqueleto del servidor (FastAPI), Docker Compose, contrato de sincronización, CI | `pytest`, `docker compose config` | Hecho; imagen Docker no construida |
+| 8 | Prueba en dispositivo Android real | Checklist manual en `docs/pruebas.md §3` | **Pendiente** (requiere SDK/dispositivo) |
+
+### Siguientes etapas propuestas
+
+1. Prueba en dispositivo (etapa 8) y corrección de lo que aparezca.
+2. Pantalla de avisos de licencias en la app (requisito Apache-2.0 de Material Symbols) y enlace a la política de privacidad.
+3. Exportación/importación de datos (portabilidad y copia manual), protegida.
+4. Traducciones al catalán y al inglés (`src/i18n/ca.ts`, `en.ts`) y selección por idioma del sistema.
+5. Iconos y marca propios.
+6. Servidor de sincronización según `services/api/README.md`.
