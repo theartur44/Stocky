@@ -1,7 +1,7 @@
 {
-  "name": "android",
-  "version": "1.0.0",
-  "main": "index.ts",
+  "name": "stoky",
+  "version": "0.1.0",
+  "main": "expo-router/entry",
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
     "expo": "~57.0.28",
@@ -28,9 +28,24 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "android": "expo run:android",
+    "start:dev-client": "expo start --dev-client",
+    "test": "jest",
+    "typecheck": "tsc --noEmit",
+    "export:android": "expo export --platform android --output-dir dist",
+    "prebuild:android": "expo prebuild --platform android --no-install --clean"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "testMatch": [
+      "<rootDir>/src/**/*.test.ts",
+      "<rootDir>/src/**/*.test.tsx"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/android/",
+      "<rootDir>/ios/"
+    ]
+  }
 }
