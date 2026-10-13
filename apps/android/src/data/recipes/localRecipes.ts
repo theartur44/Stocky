@@ -1,0 +1,318 @@
+/**
+ * Base de recetas incluida en la app. Textos redactados para Stoky (no
+ * copiados de terceros). Cantidades orientativas.
+ */
+import type { Recipe, RecipeProvider } from '../../domain/recipes';
+
+const g = (n: number) => ({ milli: n * 1000, unit: 'g' as const });
+const ml = (n: number) => ({ milli: n * 1000, unit: 'ml' as const });
+const ud = (n: number) => ({ milli: n * 1000, unit: 'unit' as const });
+
+const SALT = { name: 'Sal', match: ['sal'], staple: true };
+const WATER = { name: 'Agua', match: ['agua'], staple: true };
+const OIL = { name: 'Aceite de oliva', match: ['aceite'], staple: true };
+
+export const LOCAL_RECIPES: Recipe[] = [
+  {
+    id: 'tortilla-patatas',
+    title: 'Tortilla de patatas',
+    minutes: 40,
+    servings: 4,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Huevos (5)', match: ['huevo'], amount: ud(5) },
+      { name: 'Patatas (600 g)', match: ['patata'], amount: g(600) },
+      { name: 'Cebolla', match: ['cebolla'], optional: true },
+      OIL,
+      SALT,
+    ],
+    steps: [
+      'Pela y corta las patatas (y la cebolla, si la usas) en láminas finas.',
+      'Fríelas a fuego medio en abundante aceite hasta que estén tiernas. Escúrrelas.',
+      'Bate los huevos con sal y mézclalos con las patatas.',
+      'Cuaja la mezcla en una sartén con un poco de aceite, dale la vuelta con un plato y termina de cuajar.',
+    ],
+  },
+  {
+    id: 'arroz-verduras',
+    title: 'Arroz salteado con verduras',
+    minutes: 30,
+    servings: 3,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Arroz (250 g)', match: ['arroz'], amount: g(250) },
+      { name: 'Pimiento', match: ['pimiento'] },
+      { name: 'Calabacín', match: ['calabacin'] },
+      { name: 'Zanahoria', match: ['zanahoria'], optional: true },
+      { name: 'Huevo', match: ['huevo'], optional: true },
+      OIL,
+      SALT,
+      WATER,
+    ],
+    steps: [
+      'Cuece el arroz en agua con sal y escúrrelo.',
+      'Corta las verduras en dados pequeños y saltéalas en una sartén con aceite.',
+      'Añade el arroz y, si quieres, un huevo batido. Remueve a fuego fuerte un par de minutos.',
+    ],
+  },
+  {
+    id: 'lentejas',
+    title: 'Lentejas estofadas',
+    minutes: 50,
+    servings: 4,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Lentejas (300 g)', match: ['lenteja'], amount: g(300) },
+      { name: 'Zanahoria', match: ['zanahoria'] },
+      { name: 'Cebolla', match: ['cebolla'] },
+      { name: 'Patata', match: ['patata'], optional: true },
+      { name: 'Pimentón', match: ['pimenton'], staple: true },
+      OIL,
+      SALT,
+      WATER,
+    ],
+    steps: [
+      'Sofríe la cebolla y la zanahoria picadas en aceite.',
+      'Añade una cucharadita de pimentón, las lentejas y agua hasta cubrir de sobra.',
+      'Cuece a fuego lento unos 35-40 minutos (añade la patata troceada a mitad de cocción). Sala al final.',
+    ],
+  },
+  {
+    id: 'pasta-tomate',
+    title: 'Pasta con tomate',
+    minutes: 20,
+    servings: 2,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Pasta (200 g)', match: ['pasta', 'macarron', 'espagueti', 'tallarin'], amount: g(200) },
+      { name: 'Tomate triturado o tomate frito', match: ['tomate'] },
+      { name: 'Queso rallado', match: ['queso'], optional: true },
+      { name: 'Ajo', match: ['ajo'], optional: true },
+      OIL,
+      SALT,
+      WATER,
+    ],
+    steps: [
+      'Cuece la pasta en agua con sal el tiempo que indique el envase.',
+      'Mientras, calienta el tomate en una sartén con un poco de aceite (y ajo picado, si quieres).',
+      'Mezcla la pasta escurrida con la salsa y sirve con queso rallado.',
+    ],
+  },
+  {
+    id: 'crema-calabacin',
+    title: 'Crema de calabacín',
+    minutes: 30,
+    servings: 4,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Calabacín (2)', match: ['calabacin'], amount: ud(2) },
+      { name: 'Cebolla', match: ['cebolla'] },
+      { name: 'Patata', match: ['patata'], optional: true },
+      { name: 'Quesitos o nata', match: ['quesito', 'nata', 'queso'], optional: true },
+      OIL,
+      SALT,
+      WATER,
+    ],
+    steps: [
+      'Pocha la cebolla en aceite. Añade el calabacín (y la patata) troceados.',
+      'Cubre con agua, sala y cuece unos 20 minutos.',
+      'Tritura con los quesitos o un chorrito de nata hasta que quede fina.',
+    ],
+  },
+  {
+    id: 'ensalada-garbanzos',
+    title: 'Ensalada de garbanzos',
+    minutes: 10,
+    servings: 2,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Garbanzos cocidos (400 g)', match: ['garbanzo'], amount: g(400) },
+      { name: 'Tomate', match: ['tomate'] },
+      { name: 'Pimiento', match: ['pimiento'], optional: true },
+      { name: 'Cebolla', match: ['cebolla'], optional: true },
+      { name: 'Atún', match: ['atun'], optional: true },
+      OIL,
+      SALT,
+    ],
+    steps: [
+      'Escurre y enjuaga los garbanzos.',
+      'Pica el tomate y el resto de verduras.',
+      'Mezcla todo, aliña con aceite y sal, y añade atún si quieres.',
+    ],
+  },
+  {
+    id: 'pollo-plancha-verduras',
+    title: 'Pollo a la plancha con verduras',
+    minutes: 25,
+    servings: 2,
+    vegetarian: false,
+    ingredients: [
+      { name: 'Pechuga de pollo (300 g)', match: ['pollo'], amount: g(300) },
+      { name: 'Calabacín o berenjena', match: ['calabacin', 'berenjena'] },
+      { name: 'Pimiento', match: ['pimiento'], optional: true },
+      { name: 'Limón', match: ['limon'], optional: true },
+      OIL,
+      SALT,
+    ],
+    steps: [
+      'Corta las verduras en rodajas y hazlas a la plancha con un poco de aceite.',
+      'Haz el pollo a la plancha hasta que esté bien hecho por dentro.',
+      'Sirve con unas gotas de limón.',
+    ],
+  },
+  {
+    id: 'macarrones-carne',
+    title: 'Macarrones con carne picada',
+    minutes: 35,
+    servings: 4,
+    vegetarian: false,
+    ingredients: [
+      { name: 'Macarrones (400 g)', match: ['macarron', 'pasta'], amount: g(400) },
+      { name: 'Carne picada (300 g)', match: ['carne picada', 'picada'], amount: g(300) },
+      { name: 'Tomate frito', match: ['tomate'] },
+      { name: 'Cebolla', match: ['cebolla'], optional: true },
+      { name: 'Queso rallado', match: ['queso'], optional: true },
+      OIL,
+      SALT,
+      WATER,
+    ],
+    steps: [
+      'Cuece los macarrones en agua con sal.',
+      'Sofríe la cebolla, añade la carne y cocínala hasta que se dore. Agrega el tomate.',
+      'Mezcla con la pasta y, si quieres, gratina con queso.',
+    ],
+  },
+  {
+    id: 'merluza-horno',
+    title: 'Pescado al horno con patatas',
+    minutes: 45,
+    servings: 2,
+    vegetarian: false,
+    ingredients: [
+      { name: 'Merluza u otro pescado blanco', match: ['merluza', 'bacalao', 'pescado', 'lubina', 'dorada'] },
+      { name: 'Patatas', match: ['patata'] },
+      { name: 'Cebolla', match: ['cebolla'], optional: true },
+      { name: 'Limón', match: ['limon'], optional: true },
+      OIL,
+      SALT,
+    ],
+    steps: [
+      'Precalienta el horno a 200 °C.',
+      'Hornea las patatas en rodajas con cebolla, aceite y sal unos 25 minutos.',
+      'Coloca el pescado encima y hornea 12-15 minutos más, hasta que esté hecho.',
+    ],
+  },
+  {
+    id: 'revuelto-champinones',
+    title: 'Revuelto de champiñones',
+    minutes: 15,
+    servings: 2,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Huevos (4)', match: ['huevo'], amount: ud(4) },
+      { name: 'Champiñones', match: ['champinon', 'seta'] },
+      { name: 'Ajo', match: ['ajo'], optional: true },
+      OIL,
+      SALT,
+    ],
+    steps: [
+      'Saltea los champiñones laminados con ajo y aceite.',
+      'Añade los huevos batidos con sal y remueve a fuego suave hasta que cuajen.',
+    ],
+  },
+  {
+    id: 'gazpacho',
+    title: 'Gazpacho',
+    minutes: 15,
+    servings: 4,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Tomates maduros (1 kg)', match: ['tomate'], amount: g(1000) },
+      { name: 'Pepino', match: ['pepino'] },
+      { name: 'Pimiento verde', match: ['pimiento'] },
+      { name: 'Ajo', match: ['ajo'], optional: true },
+      { name: 'Pan del día anterior', match: ['pan'], optional: true },
+      { name: 'Vinagre', match: ['vinagre'], staple: true },
+      OIL,
+      SALT,
+      WATER,
+    ],
+    steps: [
+      'Trocea las verduras y tritúralas con el pan, aceite, vinagre y sal.',
+      'Añade agua fría hasta la textura que prefieras y cuela si quieres.',
+      'Sirve bien frío.',
+    ],
+  },
+  {
+    id: 'yogur-fruta',
+    title: 'Yogur con fruta y avena',
+    minutes: 5,
+    servings: 1,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Yogur natural', match: ['yogur'] },
+      { name: 'Fruta (plátano, fresas, manzana…)', match: ['platano', 'fresa', 'manzana', 'pera', 'melocoton', 'kiwi'] },
+      { name: 'Copos de avena', match: ['avena'], optional: true },
+      { name: 'Miel', match: ['miel'], optional: true },
+    ],
+    steps: ['Trocea la fruta.', 'Sírvela sobre el yogur con avena y un poco de miel.'],
+  },
+  {
+    id: 'tostadas-tomate',
+    title: 'Tostadas con tomate',
+    minutes: 10,
+    servings: 2,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Pan', match: ['pan'] },
+      { name: 'Tomate', match: ['tomate'] },
+      { name: 'Jamón o queso', match: ['jamon', 'queso'], optional: true },
+      OIL,
+      SALT,
+    ],
+    steps: ['Tuesta el pan.', 'Ralla el tomate por encima, añade aceite y sal y, si quieres, jamón o queso.'],
+  },
+  {
+    id: 'pure-patatas',
+    title: 'Puré de patatas',
+    minutes: 30,
+    servings: 3,
+    vegetarian: true,
+    ingredients: [
+      { name: 'Patatas (700 g)', match: ['patata'], amount: g(700) },
+      { name: 'Leche (150 ml)', match: ['leche'], amount: ml(150) },
+      { name: 'Mantequilla', match: ['mantequilla'], optional: true },
+      SALT,
+      WATER,
+    ],
+    steps: [
+      'Cuece las patatas peladas y troceadas en agua con sal hasta que estén tiernas.',
+      'Escúrrelas y aplástalas con la leche caliente y la mantequilla.',
+    ],
+  },
+  {
+    id: 'sopa-pollo',
+    title: 'Sopa de pollo y verduras',
+    minutes: 60,
+    servings: 4,
+    vegetarian: false,
+    ingredients: [
+      { name: 'Pollo (muslos o carcasa)', match: ['pollo'] },
+      { name: 'Zanahoria', match: ['zanahoria'] },
+      { name: 'Puerro o cebolla', match: ['puerro', 'cebolla'] },
+      { name: 'Fideos', match: ['fideo'], optional: true },
+      SALT,
+      WATER,
+    ],
+    steps: [
+      'Cuece el pollo con las verduras en agua con sal durante unos 45 minutos.',
+      'Cuela el caldo, desmenuza el pollo y vuelve a añadirlo.',
+      'Cuece los fideos en el caldo el tiempo que indique el envase.',
+    ],
+  },
+];
+
+export const localRecipeProvider: RecipeProvider = {
+  id: 'local',
+  getRecipes: async () => LOCAL_RECIPES,
+};
