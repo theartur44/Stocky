@@ -38,7 +38,24 @@ node scripts/check-licenses.mjs
 
 Y la lista completa de `docs/legal/lista-de-verificacion-legal.md`.
 
-## 3. Prueba manual en dispositivo (pendiente: no realizada aún)
+## 3. APK de pruebas
+
+El flujo `.github/workflows/android-apk.yml` compila un APK en GitHub Actions en cada cambio de `apps/android/` (o manualmente desde *Actions → APK Android (pruebas) → Run workflow*). El artefacto `stoky-apk-<commit>` contiene:
+
+- `app-release.apk`: APK para arm64-v8a, armeabi-v7a y x86_64 (móviles y emuladores).
+- `app-release.apk.sha256`: suma de comprobación.
+- `permisos.txt` y `badging.txt`: permisos del manifiesto **fusionado** y versiones de SDK.
+
+**Solo para pruebas**: está firmado con la clave de depuración de la plantilla. No sirve para Google Play y, si más adelante se instala una versión firmada con otra clave, habrá que desinstalar esta primero (se perderán sus datos).
+
+Instalación:
+
+1. Descarga el artefacto (requiere sesión en GitHub) y descomprime el ZIP.
+2. Copia `app-release.apk` al móvil y ábrelo; Android pedirá permitir «instalar aplicaciones desconocidas» para la app con la que lo abras.
+   - O con cable: `adb install app-release.apk`.
+3. Si Google Play Protect avisa de una app desconocida, es por la firma de depuración; comprueba antes la suma SHA-256.
+
+## 4. Prueba manual en dispositivo (pendiente: no realizada aún)
 
 Usar un dispositivo o emulador Android 10+ con una development build (`npx expo run:android`).
 
@@ -63,7 +80,7 @@ Usar un dispositivo o emulador Android 10+ con una development build (`npx expo 
 | M17 | Eliminar todos los datos | Todo vacío; avisos cancelados |
 | M18 | Actualizar desde la versión anterior | Los datos se conservan (migraciones) |
 
-## 4. Cómo informar y reproducir errores (sin datos personales)
+## 5. Cómo informar y reproducir errores (sin datos personales)
 
 Incluir:
 

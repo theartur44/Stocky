@@ -44,7 +44,7 @@
 - [ ] `npm audit --omit=dev` revisado; hallazgos en código de ejecución corregidos o justificados.
 - [ ] `npm test` y `npm run typecheck` en verde.
 - [ ] `npx expo-doctor` sin errores (requiere red).
-- [ ] Prueba manual en dispositivo real según `docs/pruebas.md §3` (incluido modo avión).
+- [ ] Prueba manual en dispositivo real según `docs/pruebas.md §4` (incluido modo avión).
 - [ ] APK/AAB firmado con clave guardada fuera del repositorio; copia de seguridad segura de la clave de subida.
 - [ ] Compilación de producción sin `__DEV__`, sin herramientas de depuración y sin `usesCleartextTraffic`.
 - [ ] Revisión de migraciones: probada la actualización desde la versión anterior publicada.

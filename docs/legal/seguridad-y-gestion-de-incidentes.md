@@ -78,4 +78,4 @@ Se agradecerán los avisos de vulnerabilidades a [CORREO DE SEGURIDAD]. Pendient
 
 ## 4. Reproducción de errores sin datos personales
 
-Ver `docs/pruebas.md §4`: los informes de errores deben describir los pasos con datos inventados y nunca adjuntar la base de datos real de un usuario.
+Ver `docs/pruebas.md §5`: los informes de errores deben describir los pasos con datos inventados y nunca adjuntar la base de datos real de un usuario.

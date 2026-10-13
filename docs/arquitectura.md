@@ -168,7 +168,7 @@ Se mantiene `apps/android` como nombre por petición, aunque el código Expo es 
 | 5 | Interfaz: pestañas, inventario, compra, caducidades, escáner, recetas, ajustes | `tsc`, pruebas de accesibilidad y textos, `expo export`, `expo prebuild` | Hecho; **sin probar en dispositivo** |
 | 6 | Documentación legal y de pruebas, scripts de secretos y licencias | Revisión; scripts ejecutados | Borradores pendientes de revisión profesional |
 | 7 | Esqueleto del servidor (FastAPI), Docker Compose, contrato de sincronización, CI | `pytest`, `docker compose config` | Hecho; imagen Docker no construida |
-| 8 | Prueba en dispositivo Android real | Checklist manual en `docs/pruebas.md §3` | **Pendiente** (requiere SDK/dispositivo) |
+| 8 | Prueba en dispositivo Android real | Checklist manual en `docs/pruebas.md §4` | **Pendiente** (requiere SDK/dispositivo) |
 
 ### Siguientes etapas propuestas
 
