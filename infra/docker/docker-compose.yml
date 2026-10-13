@@ -1,0 +1,47 @@
+# Servidor de sincronización de Stoky (FASE FUTURA, no necesario para la app v1).
+#
+# - PostgreSQL no publica ningún puerto: solo es accesible desde la red interna.
+# - La API escucha solo en 127.0.0.1; exponerla a Internet únicamente detrás de
+#   un proxy inverso con HTTPS (Caddy, Traefik o Nginx).
+# - Los secretos se leen de un fichero .env que NUNCA se versiona (ver .env.example).
+name: stoky
+
+services:
+  api:
+    build: ../../services/api
+    env_file: .env
+    environment:
+      STOKY_ENV: ${STOKY_ENV:-development}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stoky}
+      POSTGRES_USER: ${POSTGRES_USER:-stoky}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+volumes:
+  db-data:
+
+networks:
+  internal:

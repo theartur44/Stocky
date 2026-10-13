@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/android/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --ci
+      - name: Empaquetado Android (Hermes)
+        run: npx expo export --platform android --output-dir ${{ runner.temp }}/dist
+
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bash scripts/check-secrets.sh
+      - run: cd apps/android && npm ci --ignore-scripts && cd ../.. && node scripts/check-licenses.mjs

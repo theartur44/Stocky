@@ -1,0 +1,3 @@
+# Dependencias del servidor (fase futura). Versiones fijadas; actualizar de forma deliberada.
+fastapi==0.143.0
+uvicorn==0.54.0
