@@ -1,0 +1,156 @@
+import { randomUUID } from 'expo-crypto';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+
+import { openAppDatabase } from '../data/expoConnection';
+import { migrate } from '../data/migrations';
+import type { SqlDatabase } from '../data/sql';
+import { toLocalDate } from '../domain/dates';
+import { planExpiryNotifications } from '../domain/notificationPlan';
+import { t } from '../i18n';
+import * as notifications from '../integrations/notifications';
+import type { ChangeScope, ServiceContext } from '../services/context';
+import { createInventoryService, type InventoryService } from '../services/inventoryService';
+import { createPrivacyService, type PrivacyService } from '../services/privacyService';
+import { createRecipeService, type RecipeService } from '../services/recipeService';
+import { createSettingsService, DEFAULT_SETTINGS, type Settings, type SettingsService } from '../services/settingsService';
+import { createShoppingService, type ShoppingService } from '../services/shoppingService';
+import { ErrorView, LoadingView } from '../ui/components';
+import { logError } from './errors';
+
+export interface Services {
+  inventory: InventoryService;
+  shopping: ShoppingService;
+  settings: SettingsService;
+  recipes: RecipeService;
+  privacy: PrivacyService;
+}
+
+type Listener = (scope: ChangeScope) => void;
+
+interface AppContextValue {
+  services: Services;
+  settings: Settings;
+  /** Suscripción a cambios de datos (para refrescar pantallas). */
+  subscribe: (fn: Listener) => () => void;
+  /** Reprograma los avisos de caducidad según el inventario y los ajustes. */
+  syncNotifications: () => Promise<void>;
+}
+
+const AppContext = createContext<AppContextValue | null>(null);
+
+export function useApp(): AppContextValue {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error('useApp must be used inside AppProvider');
+  return ctx;
+}
+
+function buildServices(ctx: ServiceContext): Services {
+  const inventory = createInventoryService(ctx);
+  return {
+    inventory,
+    shopping: createShoppingService(ctx),
+    settings: createSettingsService(ctx),
+    recipes: createRecipeService(ctx, inventory),
+    privacy: createPrivacyService(ctx),
+  };
+}
+
+export function AppProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<
+    { status: 'loading' } | { status: 'error' } | { status: 'ready'; services: Services; db: SqlDatabase }
+  >({ status: 'loading' });
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const listeners = useRef(new Set<Listener>());
+  const servicesRef = useRef<Services | null>(null);
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  const syncNotifications = useCallback(async () => {
+    const services = servicesRef.current;
+    if (!services) return;
+    try {
+      const s = await services.settings.get();
+      if (!s.notificationsEnabled || !(await notifications.hasPermission())) {
+        await notifications.cancelAll();
+        return;
+      }
+      const now = new Date();
+      const lots = await services.inventory.listExpiring(toLocalDate(now), 60);
+      const plan = planExpiryNotifications(
+        lots.map((l) => ({ productName: l.product.name, expiryDate: l.expiryDate, expiryKind: l.expiryKind })),
+        now,
+        { warnDays: s.warnDays, notifyHour: s.notifyHour },
+      );
+      await notifications.ensureChannel();
+      await notifications.replaceScheduled(plan, s.notificationShowNames);
+    } catch (e) {
+      logError('notifications.sync', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let opened: SqlDatabase | null = null;
+    (async () => {
+      try {
+        const db = await openAppDatabase();
+        opened = db;
+        await migrate(db);
+        const ctx: ServiceContext = {
+          db,
+          newId: randomUUID,
+          clock: () => new Date(),
+          onChange: (scope) => {
+            for (const fn of listeners.current) fn(scope);
+            if (scope === 'settings' || scope === 'all') {
+              servicesRef.current?.settings.get().then(setSettings, (e) => logError('settings.reload', e));
+            }
+            if (scope !== 'shopping') {
+              // Agrupa cambios seguidos en una sola reprogramación.
+              if (syncTimer.current) clearTimeout(syncTimer.current);
+              syncTimer.current = setTimeout(() => void syncNotifications(), 800);
+            }
+          },
+        };
+        const services = buildServices(ctx);
+        servicesRef.current = services;
+        const loaded = await services.settings.get();
+        await services.shopping.ensureDefaultList();
+        if (cancelled) return;
+        notifications.configureNotificationHandler();
+        setSettings(loaded);
+        setState({ status: 'ready', services, db });
+        void syncNotifications();
+      } catch (e) {
+        logError('app.init', e);
+        if (!cancelled) setState({ status: 'error' });
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+      void opened?.close().catch(() => undefined);
+    };
+  }, [attempt, syncNotifications]);
+
+  const subscribe = useCallback((fn: Listener) => {
+    listeners.current.add(fn);
+    return () => {
+      listeners.current.delete(fn);
+    };
+  }, []);
+
+  const value = useMemo<AppContextValue | null>(
+    () => (state.status === 'ready' ? { services: state.services, settings, subscribe, syncNotifications } : null),
+    [state, settings, subscribe, syncNotifications],
+  );
+
+  if (state.status === 'loading') return <LoadingView />;
+  if (state.status === 'error' || !value) {
+    return <ErrorView message={t('errors.storage')} onRetry={() => {
+      setState({ status: 'loading' });
+      setAttempt((n) => n + 1);
+    }} />;
+  }
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}

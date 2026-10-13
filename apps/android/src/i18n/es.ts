@@ -214,6 +214,7 @@ export const es = {
     have: 'Tienes {have} de {total} ingredientes',
     usesExpiring: 'Aprovecha: {names}',
     missing: 'Falta: {names}',
+    missingShort: 'Falta',
     ingredients: 'Ingredientes',
     steps: 'Preparación',
     addMissing: 'Añadir lo que falta a la compra',

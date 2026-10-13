@@ -1,4 +1,4 @@
-import { hasValidGtinChecksum, isLookupableBarcode, normalizeBarcode } from './barcode';
+import { expandUpcE, hasValidGtinChecksum, isLookupableBarcode, normalizeBarcode, toCanonicalGtin } from './barcode';
 import { addDays, atLocalTime, daysBetween, formatLocalDate, isValidLocalDate, parseUserDate, toLocalDate } from './dates';
 import { AppError } from './errors';
 import { compareByExpiry, getExpiryStatus } from './expiry';
@@ -118,6 +118,15 @@ describe('códigos de barras', () => {
     expect(isLookupableBarcode('2000000000008')).toBe(false);
     expect(isLookupableBarcode('3017624010701')).toBe(true);
     expect(normalizeBarcode(' 301 7624-010701 ')).toBe('3017624010701');
+  });
+
+  it('expande UPC-E a UPC-A', () => {
+    expect(expandUpcE('04252614')).toBe('042100005264');
+    expect(expandUpcE('01234565')).toBe('012345000065');
+    expect(expandUpcE('04252615')).toBeNull(); // dígito de control incorrecto
+    expect(toCanonicalGtin('04252614')).toBe('042100005264');
+    expect(toCanonicalGtin('3017624010701')).toBe('3017624010701');
+    expect(toCanonicalGtin('abc')).toBeNull();
   });
 });
 
