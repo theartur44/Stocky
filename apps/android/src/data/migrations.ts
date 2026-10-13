@@ -82,6 +82,14 @@ export const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    version: 2,
+    description: 'Tamaño del envase en el catálogo (p. ej. 500 g, 1 l) para el escaneo rápido',
+    statements: [
+      `ALTER TABLE products ADD COLUMN pack_quantity_milli INTEGER
+         CHECK (pack_quantity_milli IS NULL OR pack_quantity_milli > 0)`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version;

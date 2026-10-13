@@ -15,7 +15,7 @@
       "versionCode": 1,
       "allowBackup": false,
       "adaptiveIcon": {
-        "backgroundColor": "#DCEEDF",
+        "backgroundColor": "#1E7A45",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -60,6 +60,19 @@
       "expo-router",
       "expo-sqlite",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F3F6F2",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0E120F"
+          }
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "Stoky usa la cámara solo para leer códigos de barras.",
@@ -71,12 +84,13 @@
       [
         "expo-notifications",
         {
-          "color": "#1E6B3A"
+          "color": "#1E7A45"
         }
       ]
     ],
     "experiments": {
       "typedRoutes": false
-    }
+    },
+    "primaryColor": "#1E7A45"
   }
 }

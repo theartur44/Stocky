@@ -15,10 +15,12 @@ Requisitos: Node.js ≥ 22.13 (las pruebas de base de datos usan el módulo `nod
 |---|---|
 | `src/domain/domain.test.ts` | Unidades y conversiones, cantidades en milésimas, fechas (cambio de hora, años bisiestos), estados de caducidad, códigos GTIN/UPC-E, normalización de texto, validación de entradas |
 | `src/domain/recipes.test.ts` | Coincidencia de ingredientes, faltantes, cantidades aproximadas, prioridad de productos que vencen, preferencias, coherencia de la base de recetas |
-| `src/data/data.test.ts` | Migraciones (desde cero, idempotencia, migración pendiente con datos, reversión de una migración fallida, base de datos más nueva), claves foráneas y `CHECK`, transacciones serializadas |
+| `src/data/data.test.ts` | Migraciones (desde cero, de la 1 a la 2 con datos, idempotencia, migración pendiente con datos, reversión de una migración fallida, base de datos más nueva), claves foráneas y `CHECK`, transacciones serializadas |
 | `src/services/services.test.ts` | Inventario (lotes con fechas, FEFO, unidades, consumos repetidos y concurrentes), lista de la compra (duplicados, paso al inventario atómico e idempotente), ajustes, borrado total |
 | `src/services/scanService.test.ts` | Flujo del escáner: catálogo local primero, consentimiento, códigos internos, UPC-E, **modo sin conexión** |
 | `src/integrations/integrations.test.ts` | Cliente de Open Food Facts con `fetch` simulado (minimización, 404, errores, tiempo máximo), planificación y texto de avisos |
+| `src/services/scanSession.test.ts` | Sesión de escaneo rápido (repetir código suma, datos resueltos sin pisar nombres escritos, envases → cantidad) y guardado por lotes al inventario y a la lista (todo o nada) |
+| `src/domain/quickAdd.test.ts` | Entrada rápida de la lista («2 leche», «arroz 1,5kg»…) |
 | `src/ui/ui.test.tsx` | Accesibilidad de componentes (roles, estados, etiquetas) y existencia de todas las claves de texto |
 
 Las pruebas **no** cubren: cámara real, notificaciones reales del sistema, rendimiento, ni el servicio real de Open Food Facts (bloqueado en el entorno de desarrollo donde se generó el proyecto).

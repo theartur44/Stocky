@@ -21,6 +21,8 @@ export interface ProductDraft {
   defaultUnit: Unit;
   defaultLocation: Location;
   lowStock: string;
+  /** Contenido de un envase (vacío si no se sabe o se cuenta por unidades). */
+  pack: string;
   notes: string;
   imageUrl: string | null;
   source: 'manual' | 'openfoodfacts';
@@ -35,6 +37,7 @@ export function emptyProductDraft(partial: Partial<ProductDraft> = {}): ProductD
     defaultUnit: 'unit',
     defaultLocation: 'pantry',
     lowStock: '',
+    pack: '',
     notes: '',
     imageUrl: null,
     source: 'manual',
@@ -50,6 +53,11 @@ export function productDraftToInput(d: ProductDraft): { input?: ProductInput; er
     threshold = parseQuantity(d.lowStock);
     if (threshold === null) errors.lowStockThresholdMilli = t('errors.invalidQuantity');
   }
+  let pack: number | null = null;
+  if (d.pack.trim() && d.defaultUnit !== 'unit') {
+    pack = parseQuantity(d.pack);
+    if (pack === null) errors.packQuantityMilli = t('errors.invalidQuantity');
+  }
   if (Object.keys(errors).length) return { errors };
   return {
     errors,
@@ -61,6 +69,7 @@ export function productDraftToInput(d: ProductDraft): { input?: ProductInput; er
       defaultUnit: d.defaultUnit,
       defaultLocation: d.defaultLocation,
       lowStockThresholdMilli: threshold,
+      packQuantityMilli: pack,
       imageUrl: d.imageUrl,
       source: d.source,
       notes: d.notes || null,
@@ -104,6 +113,17 @@ export function ProductFields({
         value={value.defaultLocation}
         onChange={set('defaultLocation')}
       />
+      {value.defaultUnit !== 'unit' ? (
+        <TextField
+          label={`${t('product.pack')} (${t(`units.${value.defaultUnit}`)})`}
+          hint={t('product.packHelp')}
+          value={value.pack}
+          onChangeText={set('pack')}
+          error={errors.packQuantityMilli}
+          keyboardType="decimal-pad"
+          maxLength={12}
+        />
+      ) : null}
       <TextField
         label={`${t('product.lowStock')} (${t(`units.${value.defaultUnit}`)})`}
         hint={t('product.lowStockHelp')}

@@ -60,3 +60,13 @@ export function planConsumption(lots: StockLot[], amountMilli: number, unit: Uni
   if (pending > 0) throw new AppError('insufficient_quantity', 'Not enough stock');
   return steps;
 }
+
+/**
+ * Cantidad propuesta al añadir un producto a la lista de la compra: un envase
+ * si se conoce su contenido; si no, una unidad (o 1 kg / 1 l).
+ */
+export function defaultShoppingAmount(p: Pick<Product, 'defaultUnit' | 'packQuantityMilli'>): { quantityMilli: number; unit: Unit } {
+  if (p.defaultUnit !== 'unit' && p.packQuantityMilli) return { quantityMilli: p.packQuantityMilli, unit: p.defaultUnit };
+  if (p.defaultUnit === 'kg' || p.defaultUnit === 'l') return { quantityMilli: 1000, unit: p.defaultUnit };
+  return { quantityMilli: 1000, unit: 'unit' };
+}

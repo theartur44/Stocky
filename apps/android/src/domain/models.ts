@@ -33,6 +33,8 @@ export interface Product {
   defaultLocation: Location;
   /** Umbral de «pocas existencias» en milésimas de `defaultUnit`. */
   lowStockThresholdMilli: number | null;
+  /** Contenido de un envase en milésimas de `defaultUnit` (null si se cuenta por unidades o no se sabe). */
+  packQuantityMilli: number | null;
   imageUrl: string | null;
   source: ProductSource;
   notes: string | null;

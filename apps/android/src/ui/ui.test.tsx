@@ -5,7 +5,7 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 
 import { es } from '../i18n/es';
 import { t } from '../i18n';
-import { Button, ChipGroup, SwitchRow, TextField } from './components';
+import { Button, ChipGroup, PressableScale, SwitchRow, TextField } from './components';
 
 function render(el: React.ReactElement): ReactTestRenderer {
   let r!: ReactTestRenderer;
@@ -18,7 +18,7 @@ function render(el: React.ReactElement): ReactTestRenderer {
 describe('accesibilidad de componentes', () => {
   it('los botones exponen rol, etiqueta y estado', () => {
     const r = render(<Button label="Guardar" onPress={() => undefined} disabled />);
-    const btn = r.root.findAll((n) => n.props.accessibilityRole === 'button')[0]!;
+    const btn = r.root.findAllByType(PressableScale)[0]!;
     expect(btn.props.accessibilityLabel).toBe('Guardar');
     expect(btn.props.accessibilityState).toMatchObject({ disabled: true });
   });
@@ -36,7 +36,7 @@ describe('accesibilidad de componentes', () => {
         onChange={onChange}
       />,
     );
-    const radios = r.root.findAll((n) => n.props.accessibilityRole === 'radio' && n.props.onPress);
+    const radios = r.root.findAllByType(PressableScale).filter((n) => n.props.accessibilityRole === 'radio');
     expect(radios.map((n) => n.props.accessibilityState.selected)).toEqual([false, true]);
     act(() => radios[0]!.props.onPress());
     expect(onChange).toHaveBeenCalledWith('g');

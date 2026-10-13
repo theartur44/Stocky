@@ -35,6 +35,8 @@ export interface ExternalProduct {
   imageUrl: string | null;
   category: Category;
   suggestedUnit: Unit;
+  /** Contenido de un envase en milésimas de `suggestedUnit` (null si no se conoce). */
+  packQuantityMilli: number | null;
   source: 'openfoodfacts';
 }
 
@@ -84,12 +86,18 @@ export function guessCategory(tags: unknown): Category {
   return 'other';
 }
 
-function guessUnit(unit: unknown): Unit {
-  if (typeof unit !== 'string') return 'unit';
-  const u = unit.trim().toLowerCase();
-  if (u === 'g' || u === 'kg') return u === 'kg' ? 'kg' : 'g';
-  if (u === 'ml' || u === 'cl' || u === 'l') return u === 'l' ? 'l' : 'ml';
-  return 'unit';
+/**
+ * Unidad y contenido del envase a partir de `product_quantity` y
+ * `product_quantity_unit`. Si no hay un dato fiable, se cuenta por unidades.
+ */
+export function parsePack(quantity: unknown, unit: unknown): { unit: Unit; packQuantityMilli: number | null } {
+  const q = typeof quantity === 'number' ? quantity : typeof quantity === 'string' ? Number(quantity.replace(',', '.')) : NaN;
+  const u = typeof unit === 'string' ? unit.trim().toLowerCase() : '';
+  const factors: Record<string, [Unit, number]> = { g: ['g', 1], kg: ['kg', 1], ml: ['ml', 1], cl: ['ml', 10], l: ['l', 1] };
+  const f = factors[u];
+  if (!f || !Number.isFinite(q) || q <= 0 || q > 100_000) return { unit: 'unit', packQuantityMilli: null };
+  const milli = Math.round(q * f[1] * 1000);
+  return milli > 0 ? { unit: f[0], packQuantityMilli: milli } : { unit: 'unit', packQuantityMilli: null };
 }
 
 /** Convierte la respuesta JSON en un producto validado (o `not_found`). */
@@ -106,6 +114,7 @@ export function parseOffResponse(barcode: string, httpStatus: number, json: unkn
   const brand = cleanExternal(typeof p.brands === 'string' ? p.brands.split(',')[0] : null, LIMITS.brand);
   const img = typeof p.image_front_small_url === 'string' ? p.image_front_small_url : null;
   if (!name && !brand) return { status: 'not_found' };
+  const pack = parsePack(p.product_quantity, p.product_quantity_unit);
   return {
     status: 'found',
     product: {
@@ -114,7 +123,8 @@ export function parseOffResponse(barcode: string, httpStatus: number, json: unkn
       brand,
       imageUrl: img && isSafeImageUrl(img) ? img : null,
       category: guessCategory(p.categories_tags),
-      suggestedUnit: guessUnit(p.product_quantity_unit),
+      suggestedUnit: pack.unit,
+      packQuantityMilli: pack.packQuantityMilli,
       source: 'openfoodfacts',
     },
   };

@@ -1,228 +1,597 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { CameraView, useCameraPermissions, type BarcodeType } from 'expo-camera';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
-import { Alert, Linking, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Easing, FlatList, Linking, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { Product } from '../domain/models';
+import { isLookupableBarcode, toCanonicalGtin } from '../domain/barcode';
+import {
+  emptySession,
+  sessionReducer,
+  sessionSummary,
+  visibleLines,
+  type ResolvedInfo,
+  type ScanSession,
+  type SessionAction,
+} from '../domain/scanSession';
 import { t } from '../i18n';
 import { lookupProduct } from '../integrations/openFoodFacts';
 import { useApp } from '../state/AppProvider';
 import { errorMessage, logError } from '../state/errors';
-import { resolveScan, type ScanOutcome } from '../services/scanService';
-import { Body, Button, Card, LoadingView, Notice, Screen, TextField, Title } from '../ui/components';
-import { radius, spacing } from '../ui/theme';
+import { resolveScan } from '../services/scanService';
+import { Button, IconButton, LoadingView, PressableScale } from '../ui/components';
+import { ScanLineCard } from '../ui/scan/ScanLineCard';
+import { elevation, font, radius, spacing, useTheme } from '../ui/theme';
+import { useToast } from '../ui/toast';
 
 const BARCODE_TYPES: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'upc_e', 'itf14', 'code128'];
+/** La cámara repite el mismo código muchas veces por segundo. */
+const SAME_CODE_COOLDOWN_MS = 2000;
+/** Consultas simultáneas a Open Food Facts. */
+const MAX_PARALLEL_LOOKUPS = 3;
 
 type Mode = 'inventory' | 'shopping';
 
-export default function ScanScreen() {
+const haptic = {
+  success: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined),
+  light: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined),
+  error: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined),
+};
+
+/**
+ * Escaneo rápido: la cámara queda abierta y cada código se añade al momento a
+ * la bandeja inferior. Los datos del producto se buscan en segundo plano, sin
+ * bloquear el siguiente escaneo. Al terminar se guarda todo de una vez.
+ */
+export default function QuickScanScreen() {
   const params = useLocalSearchParams<{ mode?: string; listId?: string }>();
-  const mode: Mode = params.mode === 'shopping' ? 'shopping' : 'inventory';
   const { services } = useApp();
+  const { colors } = useTheme();
+  const toast = useToast();
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const navigation = useNavigation();
   const [permission, requestPermission] = useCameraPermissions();
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [pendingCode, setPendingCode] = useState<string | null>(null);
+
+  const [mode, setMode] = useState<Mode>(params.mode === 'shopping' ? 'shopping' : 'inventory');
+  const [session, dispatch] = useReducer(sessionReducer, emptySession);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [torch, setTorch] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const [manual, setManual] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const sessionRef = useRef<ScanSession>(session);
+  sessionRef.current = session;
+  const savedRef = useRef(false);
   const lastScan = useRef<{ code: string; at: number } | null>(null);
-  const processing = useRef(false);
+  const consentAsked = useRef(false);
+  const queue = useRef<string[]>([]);
+  const running = useRef(0);
+  const flash = useRef(new Animated.Value(0)).current;
+  const scanLine = useRef(new Animated.Value(0)).current;
 
-  const goManual = useCallback(
-    (code: string | null) => {
-      if (mode === 'shopping') {
-        router.back();
-        return;
-      }
-      router.replace({ pathname: '/product/new', params: code ? { barcode: code } : {} });
-    },
-    [mode],
+  // Línea de escaneo animada.
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanLine, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(scanLine, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [scanLine]);
+
+  // Aviso al salir con productos sin guardar.
+  useEffect(
+    () =>
+      navigation.addListener('beforeRemove', (e) => {
+        if (savedRef.current || sessionRef.current.lines.length === 0) return;
+        e.preventDefault();
+        Alert.alert(t('quickScan.discardTitle'), t('quickScan.discardMessage', { count: sessionRef.current.lines.length }), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('quickScan.discard'), style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+        ]);
+      }),
+    [navigation],
   );
 
-  const addKnownToShopping = useCallback(
-    async (product: Product) => {
-      const listId = params.listId ?? (await services.shopping.ensureDefaultList()).id;
-      await services.shopping.addItem(listId, {
-        name: product.name,
-        productId: product.id,
-        quantityMilli: 1000,
-        unit: product.defaultUnit,
+  const flashOnce = useCallback(() => {
+    flash.setValue(1);
+    Animated.timing(flash, { toValue: 0, duration: 450, useNativeDriver: true }).start();
+  }, [flash]);
+
+  /** Identifica un código en segundo plano y actualiza su línea. */
+  const resolveLine = useCallback(
+    async (code: string) => {
+      const outcome = await resolveScan(code, undefined, {
+        inventory: services.inventory,
+        settings: services.settings,
+        lookup: (c) => lookupProduct(c),
       });
-      router.back();
-    },
-    [params.listId, services],
-  );
-
-  const handleOutcome = useCallback(
-    async (outcome: ScanOutcome) => {
+      const act = (a: SessionAction) => dispatch(a);
       switch (outcome.kind) {
-        case 'invalid':
-          setMessage(t('scan.invalidCode'));
+        case 'known': {
+          const p = outcome.product;
+          const info: ResolvedInfo = {
+            productId: p.id,
+            name: p.name,
+            brand: p.brand,
+            category: p.category,
+            unit: p.defaultUnit,
+            packQuantityMilli: p.packQuantityMilli,
+            imageUrl: p.imageUrl,
+            source: p.source,
+            location: p.defaultLocation,
+          };
+          act({ type: 'resolved', code, info });
           return;
-        case 'internal':
-          setMessage(t('scan.internalCode'));
-          return;
-        case 'known':
-          if (mode === 'shopping') await addKnownToShopping(outcome.product);
-          else router.replace({ pathname: '/lot/edit', params: { productId: outcome.product.id } });
-          return;
-        case 'needs_consent':
-          askConsent(outcome.code);
-          return;
-        case 'lookup_disabled':
-          setPendingCode(outcome.code);
-          setMessage(t('scan.lookupDisabled'));
-          return;
-        case 'not_found':
-          setPendingCode(outcome.code);
-          setMessage(t('scan.notFound'));
-          return;
-        case 'error':
-          setPendingCode(outcome.code);
-          setMessage(errorMessage(outcome.error));
-          return;
+        }
         case 'found': {
           const e = outcome.external;
-          if (mode === 'shopping') {
-            // Se guarda en el catálogo (sin existencias) para conservar el código.
-            const product = await services.inventory.createProduct({
-              name: e.name ?? e.brand ?? outcome.code,
+          act({
+            type: 'resolved',
+            code,
+            info: {
+              name: e.name,
               brand: e.brand,
-              barcode: outcome.code,
-              category: e.category,
-              defaultUnit: e.suggestedUnit,
-              defaultLocation: 'pantry',
-              imageUrl: e.imageUrl,
-              source: 'openfoodfacts',
-            });
-            await addKnownToShopping(product);
-            return;
-          }
-          router.replace({
-            pathname: '/product/new',
-            params: {
-              barcode: outcome.code,
-              name: e.name ?? '',
-              brand: e.brand ?? '',
-              imageUrl: e.imageUrl ?? '',
               category: e.category,
               unit: e.suggestedUnit,
+              packQuantityMilli: e.packQuantityMilli,
+              imageUrl: e.imageUrl,
               source: 'openfoodfacts',
             },
           });
           return;
         }
+        case 'not_found':
+          act({ type: 'failed', code, status: 'unknown' });
+          return;
+        case 'error':
+          act({ type: 'failed', code, status: 'error', errorCode: outcome.error.code });
+          return;
+        case 'lookup_disabled':
+          act({ type: 'failed', code, status: 'manual' });
+          return;
+        case 'needs_consent':
+          act({ type: 'failed', code, status: 'manual' });
+          askConsent();
+          return;
+        default:
+          act({ type: 'remove', code });
       }
     },
-    // askConsent se define más abajo y solo depende de estado estable.
-    [mode, addKnownToShopping, services],
+    // askConsent solo usa refs y servicios, estables durante la pantalla.
+    [services],
   );
 
-  const process = useCallback(
-    async (raw: string, type?: string) => {
-      if (processing.current) return;
-      processing.current = true;
-      setBusy(true);
-      setMessage(null);
-      setPendingCode(null);
-      try {
-        const outcome = await resolveScan(raw, type, {
-          inventory: services.inventory,
-          settings: services.settings,
-          lookup: (code) => lookupProduct(code),
+  const pump = useCallback(() => {
+    while (running.current < MAX_PARALLEL_LOOKUPS && queue.current.length > 0) {
+      const code = queue.current.shift()!;
+      running.current++;
+      resolveLine(code)
+        .catch((e) => {
+          logError('quickScan.resolve', e);
+          dispatch({ type: 'failed', code, status: 'error' });
+        })
+        .finally(() => {
+          running.current--;
+          pump();
         });
-        await handleOutcome(outcome);
-      } catch (e) {
-        logError('scan.process', e);
-        setMessage(errorMessage(e));
-      } finally {
-        processing.current = false;
-        setBusy(false);
-      }
+    }
+  }, [resolveLine]);
+
+  const enqueue = useCallback(
+    (code: string) => {
+      queue.current.push(code);
+      pump();
     },
-    [services, handleOutcome],
+    [pump],
   );
 
-  function askConsent(code: string) {
+  function askConsent() {
+    if (consentAsked.current) return;
+    consentAsked.current = true;
     Alert.alert(t('scan.consentTitle'), t('scan.consentBody'), [
       {
         text: t('scan.consentDeny'),
         style: 'cancel',
-        onPress: async () => {
-          await services.settings.setLookupConsent(false);
-          goManual(code);
-        },
+        onPress: () => void services.settings.setLookupConsent(false),
       },
       {
         text: t('scan.consentAccept'),
         onPress: async () => {
           await services.settings.setLookupConsent(true);
-          void process(code);
+          // Se buscan ahora las líneas que esperaban el permiso.
+          for (const l of sessionRef.current.lines) {
+            if (l.status === 'manual' && !l.nameEdited) {
+              dispatch({ type: 'retry', code: l.code });
+              enqueue(l.code);
+            }
+          }
         },
       },
     ]);
   }
 
-  const onScanned = ({ data, type }: { data: string; type: string }) => {
-    const now = Date.now();
-    // La cámara emite el mismo código muchas veces por segundo.
-    if (lastScan.current && lastScan.current.code === data && now - lastScan.current.at < 3000) return;
-    lastScan.current = { code: data, at: now };
-    void process(data, type);
+  const handleCode = useCallback(
+    (raw: string, type?: string) => {
+      const code = toCanonicalGtin(raw, type);
+      const now = Date.now();
+      if (lastScan.current && lastScan.current.code === (code ?? raw) && now - lastScan.current.at < SAME_CODE_COOLDOWN_MS) return;
+      lastScan.current = { code: code ?? raw, at: now };
+
+      if (!code) {
+        haptic.error();
+        toast(t('scan.invalidCode'), { tone: 'warning' });
+        return;
+      }
+      if (!isLookupableBarcode(code) && !sessionRef.current.lines.some((l) => l.code === code)) {
+        // Código interno de tienda: puede estar en el catálogo local, si no, se avisa.
+        void services.inventory.getProductByBarcode(code).then((p) => {
+          if (!p) {
+            haptic.error();
+            toast(t('scan.internalCode'), { tone: 'warning' });
+            return;
+          }
+          dispatch({ type: 'scanned', code });
+          enqueue(code);
+          haptic.success();
+          flashOnce();
+        });
+        return;
+      }
+      const existing = sessionRef.current.lines.find((l) => l.code === code);
+      dispatch({ type: 'scanned', code });
+      flashOnce();
+      if (existing) {
+        haptic.light();
+        toast(t('quickScan.incremented', { name: existing.name, count: existing.count + 1 }), { tone: 'neutral', icon: 'add-circle' });
+      } else {
+        haptic.success();
+        enqueue(code);
+      }
+    },
+    [enqueue, flashOnce, services, toast],
+  );
+
+  const retry = useCallback(
+    (code: string) => {
+      dispatch({ type: 'retry', code });
+      enqueue(code);
+    },
+    [enqueue],
+  );
+
+  const save = async () => {
+    const lines = sessionRef.current.lines;
+    if (lines.length === 0) return;
+    setSaving(true);
+    try {
+      let n: number;
+      if (mode === 'shopping') {
+        const listId = params.listId ?? (await services.shopping.ensureDefaultList()).id;
+        n = await services.scan.saveToShoppingList(listId, lines);
+        toast(t('quickScan.savedShopping', { count: n }));
+      } else {
+        n = await services.scan.saveToInventory(lines);
+        toast(t('quickScan.savedInventory', { count: n }));
+      }
+      haptic.success();
+      savedRef.current = true;
+      dispatch({ type: 'clear' });
+      router.back();
+    } catch (e) {
+      haptic.error();
+      Alert.alert(t('errors.title'), errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmSave = () => {
+    const sum = sessionSummary(sessionRef.current);
+    if (sum.loading > 0) {
+      Alert.alert(t('quickScan.stillLoadingTitle'), t('quickScan.stillLoading', { count: sum.loading }), [
+        { text: t('quickScan.wait'), style: 'cancel' },
+        { text: t('quickScan.saveAnyway'), onPress: () => void save() },
+      ]);
+      return;
+    }
+    void save();
   };
 
   if (!permission) return <LoadingView />;
 
+  const summary = sessionSummary(session);
+  const lines = visibleLines(session);
+  const manualExtra = manualOpen ? 64 : 0;
+  const sheetHeight = sheetOpen
+    ? height * 0.78
+    : lines.length === 0
+      ? 190 + manualExtra
+      : Math.min(height * 0.5, 230 + manualExtra + lines.length * 84);
+
   return (
-    <Screen>
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <Stack.Screen options={{ headerShown: false }} />
+
       {permission.granted ? (
-        <View style={styles.cameraBox} accessible accessibilityLabel={t('scan.hint')}>
-          <CameraView
-            style={StyleSheet.absoluteFill}
-            facing="back"
-            barcodeScannerSettings={{ barcodeTypes: BARCODE_TYPES }}
-            onBarcodeScanned={busy ? undefined : onScanned}
-          />
-        </View>
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          enableTorch={torch}
+          barcodeScannerSettings={{ barcodeTypes: BARCODE_TYPES }}
+          onBarcodeScanned={saving ? undefined : ({ data, type }) => handleCode(data, type)}
+        />
       ) : (
-        <Card>
-          <Title>{t('scan.permissionTitle')}</Title>
-          <Body>{t('scan.permissionBody')}</Body>
-          {permission.canAskAgain ? (
-            <Button label={t('scan.permissionButton')} icon="camera-outline" onPress={() => void requestPermission()} />
-          ) : (
-            <>
-              <Notice message={t('scan.permissionDenied')} tone="warning" />
-              <Button label={t('scan.openSettings')} variant="secondary" onPress={() => void Linking.openSettings()} />
-            </>
-          )}
-        </Card>
+        <LinearGradient colors={colors.gradient} style={StyleSheet.absoluteFill} />
       )}
 
-      {permission.granted ? <Body muted>{t('scan.hint')}</Body> : null}
-      {busy ? <Notice message={t('scan.searching')} /> : null}
-      {message ? <Notice message={message} tone="warning" /> : null}
-      {pendingCode && mode === 'inventory' ? (
-        <Button label={t('scan.addManually')} icon="create-outline" onPress={() => goManual(pendingCode)} />
-      ) : null}
+      {/* Destello al leer un código */}
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#3FBF73', opacity: flash.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] }) }]} />
 
-      <Card>
-        <TextField
-          label={t('scan.manualEntry')}
-          placeholder={t('scan.manualPlaceholder')}
-          value={manual}
-          onChangeText={setManual}
-          keyboardType="number-pad"
-          maxLength={20}
-          returnKeyType="search"
-          onSubmitEditing={() => void process(manual)}
+      {/* Barra superior */}
+      <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
+        <RoundButton icon="close" label={t('common.close')} onPress={() => router.back()} />
+        <View style={styles.modeSwitch}>
+          {(['inventory', 'shopping'] as const).map((m) => (
+            <PressableScale
+              key={m}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: mode === m }}
+              accessibilityLabel={t(`quickScan.mode.${m}`)}
+              onPress={() => setMode(m)}
+              style={[styles.modeBtn, mode === m && { backgroundColor: '#FFFFFF' }]}
+            >
+              <Ionicons name={m === 'inventory' ? 'home' : 'cart'} size={16} color={mode === m ? colors.primaryStrong : '#FFFFFF'} />
+              <Text style={{ color: mode === m ? colors.primaryStrong : '#FFFFFF', fontWeight: '700', fontSize: font.small }}>
+                {t(`quickScan.mode.${m}`)}
+              </Text>
+            </PressableScale>
+          ))}
+        </View>
+        {permission.granted ? (
+          <RoundButton icon={torch ? 'flash' : 'flash-off'} label={t('quickScan.torch')} onPress={() => setTorch((v) => !v)} />
+        ) : (
+          <View style={{ width: 48 }} />
+        )}
+      </View>
+
+      {/* Visor o permiso */}
+      {permission.granted ? (
+        <View pointerEvents="none" style={[styles.viewfinderWrap, { top: insets.top + 90, bottom: sheetHeight + 20 }]}>
+          <View style={styles.viewfinder}>
+            {(['tl', 'tr', 'bl', 'br'] as const).map((c) => (
+              <View key={c} style={[styles.corner, styles[c]]} />
+            ))}
+            <Animated.View
+              style={[
+                styles.laser,
+                { transform: [{ translateY: scanLine.interpolate({ inputRange: [0, 1], outputRange: [8, 152] }) }] },
+              ]}
+            />
+          </View>
+          <Text style={styles.hint}>{t('quickScan.hint')}</Text>
+        </View>
+      ) : (
+        <View style={[styles.permission, { top: insets.top + 100 }]}>
+          <View style={styles.permissionIcon}>
+            <Ionicons name="camera" size={42} color="#FFFFFF" />
+          </View>
+          <Text style={styles.permissionTitle}>{t('scan.permissionTitle')}</Text>
+          <Text style={styles.permissionBody}>{t('scan.permissionBody')}</Text>
+          {permission.canAskAgain ? (
+            <Button label={t('scan.permissionButton')} icon="camera-outline" variant="secondary" onPress={() => void requestPermission()} />
+          ) : (
+            <Button label={t('scan.openSettings')} variant="secondary" onPress={() => void Linking.openSettings()} />
+          )}
+        </View>
+      )}
+
+      {/* Bandeja inferior */}
+      <View
+        style={[
+          styles.sheet,
+          elevation(colors, 3),
+          { height: sheetHeight, backgroundColor: colors.background, paddingBottom: insets.bottom + spacing.sm },
+        ]}
+      >
+        <PressableScale
+          scaleTo={0.99}
+          onPress={() => setSheetOpen((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={sheetOpen ? t('quickScan.collapse') : t('quickScan.expand')}
+          style={styles.handleArea}
+        >
+          <View style={[styles.handle, { backgroundColor: colors.border }]} />
+        </PressableScale>
+
+        <View style={styles.sheetHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.text, fontSize: font.large, fontWeight: '800' }}>
+              {summary.products === 0 ? t('quickScan.emptyTitle') : t('quickScan.summary', { count: summary.products, units: summary.units })}
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: font.small }}>
+              {summary.loading > 0
+                ? t('quickScan.identifying', { count: summary.loading })
+                : summary.needsName > 0
+                  ? t('quickScan.needsName', { count: summary.needsName })
+                  : summary.products === 0
+                    ? t('quickScan.emptyHint')
+                    : t('quickScan.tapToEdit')}
+            </Text>
+          </View>
+          <IconButton icon="keypad-outline" label={t('scan.manualEntry')} onPress={() => setManualOpen((v) => !v)} filled />
+        </View>
+
+        {manualOpen ? (
+          <View style={[styles.manualRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <TextInput
+              accessibilityLabel={t('scan.manualEntry')}
+              placeholder={t('scan.manualPlaceholder')}
+              placeholderTextColor={colors.textMuted}
+              value={manual}
+              onChangeText={setManual}
+              keyboardType="number-pad"
+              maxLength={20}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                handleCode(manual);
+                setManual('');
+              }}
+              style={{ flex: 1, color: colors.text, fontSize: font.body, minHeight: 48 }}
+            />
+            <IconButton
+              icon="add-circle"
+              label={t('common.add')}
+              size={30}
+              disabled={!manual.trim()}
+              onPress={() => {
+                handleCode(manual);
+                setManual('');
+              }}
+            />
+          </View>
+        ) : null}
+
+        <FlatList
+          style={{ flex: 1 }}
+          data={lines}
+          keyExtractor={(l) => l.code}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ gap: spacing.sm, paddingBottom: spacing.md }}
+          renderItem={({ item }) => (
+            <ScanLineCard
+              line={item}
+              expanded={expanded === item.code}
+              onToggle={() => {
+                setExpanded((c) => (c === item.code ? null : item.code));
+                if (!sheetOpen) setSheetOpen(true);
+              }}
+              dispatch={dispatch}
+              onRetry={retry}
+            />
+          )}
         />
-        <Button label={t('common.search')} icon="search" variant="secondary" disabled={!manual.trim() || busy} onPress={() => void process(manual)} />
-      </Card>
-    </Screen>
+
+        {summary.products > 0 ? (
+          <View style={{ gap: spacing.sm }}>
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={mode === 'shopping' ? t('quickScan.saveShopping', { count: summary.products }) : t('quickScan.saveInventory', { count: summary.products })}
+              accessibilityState={{ busy: saving, disabled: saving }}
+              disabled={saving}
+              onPress={confirmSave}
+            >
+              <LinearGradient colors={colors.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.saveBtn}>
+                {saving ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+                    <Text style={styles.saveText}>
+                      {mode === 'shopping'
+                        ? t('quickScan.saveShopping', { count: summary.products })
+                        : t('quickScan.saveInventory', { count: summary.products })}
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </PressableScale>
+          </View>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
+function RoundButton({ icon, label, onPress }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; onPress: () => void }) {
+  return (
+    <PressableScale accessibilityRole="button" accessibilityLabel={label} onPress={onPress} scaleTo={0.88} style={styles.round}>
+      <Ionicons name={icon} size={24} color="#FFFFFF" />
+    </PressableScale>
+  );
+}
+
+const CORNER = 34;
 const styles = StyleSheet.create({
-  cameraBox: { height: 280, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: '#000', marginBottom: spacing.sm },
+  topBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  round: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modeSwitch: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: radius.pill, padding: 4 },
+  modeBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.md, minHeight: 40, borderRadius: radius.pill },
+  viewfinderWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
+  viewfinder: { width: 260, height: 170 },
+  corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: '#FFFFFF' },
+  tl: { top: 0, left: 0, borderTopWidth: 5, borderLeftWidth: 5, borderTopLeftRadius: 18 },
+  tr: { top: 0, right: 0, borderTopWidth: 5, borderRightWidth: 5, borderTopRightRadius: 18 },
+  bl: { bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5, borderBottomLeftRadius: 18 },
+  br: { bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5, borderBottomRightRadius: 18 },
+  laser: { position: 'absolute', left: 16, right: 16, height: 3, borderRadius: 2, backgroundColor: '#3FBF73' },
+  hint: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: font.body,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  permission: { position: 'absolute', left: spacing.xl, right: spacing.xl, alignItems: 'center', gap: spacing.md },
+  permissionIcon: {
+    width: 84,
+    height: 84,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  permissionTitle: { color: '#FFFFFF', fontSize: font.heading, fontWeight: '800', textAlign: 'center' },
+  permissionBody: { color: '#FFFFFF', fontSize: font.body, textAlign: 'center', opacity: 0.92, lineHeight: 22 },
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  handleArea: { alignItems: 'center', paddingVertical: spacing.sm, minHeight: 28 },
+  handle: { width: 44, height: 5, borderRadius: 3 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  manualRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: radius.md, paddingLeft: spacing.md },
+  saveBtn: {
+    minHeight: 56,
+    borderRadius: radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  saveText: { color: '#FFFFFF', fontWeight: '800', fontSize: font.large },
 });

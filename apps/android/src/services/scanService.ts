@@ -1,8 +1,15 @@
+import { lotRepo, productRepo } from '../data/repositories';
+import type { SqlExecutor } from '../data/sql';
 import { isLookupableBarcode, normalizeBarcode, toCanonicalGtin } from '../domain/barcode';
+import { toLocalDate } from '../domain/dates';
 import { AppError, isAppError } from '../domain/errors';
 import type { Product } from '../domain/models';
+import { lineQuantity, placeholderName, type ScanLine } from '../domain/scanSession';
+import { validateLotInput, validateProductInput } from '../domain/validation';
 import type { ExternalProduct, LookupResult } from '../integrations/openFoodFacts';
+import { nowIso, type ServiceContext } from './context';
 import type { InventoryService } from './inventoryService';
+import { addItemTx } from './shoppingService';
 import type { SettingsService } from './settingsService';
 
 export type ScanOutcome =
@@ -56,3 +63,86 @@ export async function resolveScan(raw: string, scannedType: string | undefined, 
     return { kind: 'error', code, error: isAppError(e) ? e : new AppError('remote_error', 'Lookup failed') };
   }
 }
+
+// ------------------------------------------------------------------ guardado de la sesión
+
+/**
+ * Producto del catálogo para una línea escaneada: el ya vinculado, uno con el
+ * mismo código o uno nuevo con los datos de la línea.
+ */
+async function ensureProduct(tx: SqlExecutor, ctx: ServiceContext, line: ScanLine, now: string): Promise<Product> {
+  if (line.productId) {
+    const p = await productRepo.get(tx, line.productId);
+    if (p) return p;
+  }
+  const byCode = await productRepo.getByBarcode(tx, line.code);
+  if (byCode) return byCode;
+  const q = lineQuantity(line);
+  const input = validateProductInput({
+    name: line.name || placeholderName(line.code),
+    brand: line.brand,
+    barcode: line.code,
+    category: line.category,
+    defaultUnit: q.unit,
+    defaultLocation: line.location,
+    packQuantityMilli: q.unit === 'unit' ? null : line.packQuantityMilli,
+    imageUrl: line.imageUrl,
+    source: line.source,
+  });
+  return productRepo.insert(tx, ctx.newId(), input, now);
+}
+
+export function createScanService(ctx: ServiceContext) {
+  return {
+    /**
+     * Guarda la sesión en el inventario: un lote por línea. Todo o nada: si
+     * una línea falla, no se guarda ninguna y la sesión sigue intacta.
+     */
+    async saveToInventory(lines: ScanLine[]): Promise<number> {
+      if (lines.length === 0) return 0;
+      const today = toLocalDate(ctx.clock());
+      const n = await ctx.db.transaction(async (tx) => {
+        const now = nowIso(ctx);
+        for (const line of lines) {
+          const product = await ensureProduct(tx, ctx, line, now);
+          const q = lineQuantity(line);
+          const lot = validateLotInput({
+            quantityMilli: q.quantityMilli,
+            unit: q.unit,
+            location: line.location,
+            addedOn: today,
+            expiryDate: line.expiryDate,
+            expiryKind: line.expiryKind,
+            expiryEstimated: line.expiryEstimated,
+          });
+          await lotRepo.insert(tx, ctx.newId(), product.id, lot, now);
+        }
+        return lines.length;
+      });
+      ctx.onChange?.('inventory');
+      return n;
+    },
+
+    /** Añade la sesión a una lista de la compra (uniendo duplicados). */
+    async saveToShoppingList(listId: string, lines: ScanLine[]): Promise<number> {
+      if (lines.length === 0) return 0;
+      const n = await ctx.db.transaction(async (tx) => {
+        const now = nowIso(ctx);
+        for (const line of lines) {
+          const product = await ensureProduct(tx, ctx, line, now);
+          await addItemTx(tx, ctx, listId, {
+            name: product.name,
+            productId: product.id,
+            quantityMilli: line.count * 1000,
+            unit: 'unit',
+          });
+        }
+        return lines.length;
+      });
+      ctx.onChange?.('all');
+      return n;
+    },
+  };
+}
+
+export type ScanService = ReturnType<typeof createScanService>;

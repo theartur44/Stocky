@@ -8,9 +8,9 @@ Aplicación Android para gestionar el inventario de alimentos de casa: fechas de
 
 - Inventario con catálogo de productos y **lotes** independientes (cantidad, unidad, ubicación, fecha de caducidad o de consumo preferente, fecha estimada, lote del fabricante, notas).
 - Consumo por lote o por producto en orden de caducidad (FEFO), con conversión de unidades (g/kg, ml/l).
-- Escáner de códigos de barras (EAN-13, EAN-8, UPC-A, UPC-E, ITF-14, Code 128) y entrada manual.
+- **Escaneo rápido** de códigos de barras (EAN-13, EAN-8, UPC-A, UPC-E, ITF-14, Code 128): la cámara queda abierta, cada producto se añade al momento y sus datos se buscan en segundo plano; se guarda todo de una vez en casa o en la lista.
 - Consulta opcional a Open Food Facts, **solo con consentimiento** y solo si el producto no está ya en el dispositivo.
-- Listas de la compra con unión de duplicados y paso al inventario atómico e idempotente.
+- Listas de la compra con entrada rápida («2 leche»), sugerencias de lo que se acaba, unión de duplicados y paso al inventario atómico e idempotente.
 - Avisos locales de caducidad agrupados por día, sin nombres de productos por defecto.
 - Sugerencias de recetas calculadas en el dispositivo, priorizando lo que vence antes.
 - Tema claro/oscuro, componentes accesibles, textos en español (preparado para catalán e inglés).

@@ -31,6 +31,7 @@ interface ProductRow {
   default_unit: string;
   default_location: string;
   low_stock_threshold_milli: number | null;
+  pack_quantity_milli: number | null;
   image_url: string | null;
   source: string;
   notes: string | null;
@@ -48,6 +49,7 @@ function toProduct(r: ProductRow): Product {
     defaultUnit: r.default_unit as Unit,
     defaultLocation: r.default_location as Location,
     lowStockThresholdMilli: r.low_stock_threshold_milli,
+    packQuantityMilli: r.pack_quantity_milli ?? null,
     imageUrl: r.image_url,
     source: r.source as ProductSource,
     notes: r.notes,
@@ -60,8 +62,8 @@ export const productRepo = {
   async insert(db: SqlExecutor, id: string, p: Required<ProductInput>, now: string): Promise<Product> {
     await db.run(
       `INSERT INTO products (id, name, name_key, brand, barcode, category, default_unit, default_location,
-         low_stock_threshold_milli, image_url, source, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         low_stock_threshold_milli, pack_quantity_milli, image_url, source, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         p.name,
@@ -72,6 +74,7 @@ export const productRepo = {
         p.defaultUnit,
         p.defaultLocation,
         p.lowStockThresholdMilli,
+        p.packQuantityMilli,
         p.imageUrl,
         p.source,
         p.notes,
@@ -85,7 +88,8 @@ export const productRepo = {
   async update(db: SqlExecutor, id: string, p: Required<ProductInput>, now: string): Promise<number> {
     const r = await db.run(
       `UPDATE products SET name = ?, name_key = ?, brand = ?, barcode = ?, category = ?, default_unit = ?,
-         default_location = ?, low_stock_threshold_milli = ?, image_url = ?, source = ?, notes = ?, updated_at = ?
+         default_location = ?, low_stock_threshold_milli = ?, pack_quantity_milli = ?, image_url = ?, source = ?,
+         notes = ?, updated_at = ?
        WHERE id = ?`,
       [
         p.name,
@@ -96,6 +100,7 @@ export const productRepo = {
         p.defaultUnit,
         p.defaultLocation,
         p.lowStockThresholdMilli,
+        p.packQuantityMilli,
         p.imageUrl,
         p.source,
         p.notes,

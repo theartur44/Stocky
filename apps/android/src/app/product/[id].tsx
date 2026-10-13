@@ -1,8 +1,9 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, Image, View } from 'react-native';
 
 import { formatLocalDate, toLocalDate } from '../../domain/dates';
+import { defaultShoppingAmount, summarizeProduct } from '../../domain/inventory';
 import type { StockLot } from '../../domain/models';
 import { areCompatible, parseQuantity, UNITS, type Unit } from '../../domain/units';
 import { t } from '../../i18n';
@@ -14,6 +15,7 @@ import {
   Body,
   Button,
   Card,
+  CategoryAvatar,
   ChipGroup,
   ErrorView,
   ListRow,
@@ -51,8 +53,7 @@ export default function ProductDetailScreen() {
       const r = await services.shopping.addItem(list.id, {
         name: product.name,
         productId: product.id,
-        quantityMilli: 1000,
-        unit: product.defaultUnit,
+        ...defaultShoppingAmount(product),
       });
       setMessage({ text: r.merged ? t('product.mergedInShopping') : t('product.addedToShopping'), tone: 'neutral' });
     } catch (e) {
@@ -64,6 +65,7 @@ export default function ProductDetailScreen() {
   if (q.error) return <ErrorView message={errorMessage(q.error)} onRetry={q.reload} />;
   if (!q.data) return <ErrorView message={t('product.notFound')} />;
   const { product, lots } = q.data;
+  const summary = summarizeProduct(product, lots);
   const today = toLocalDate(new Date());
 
   const deleteProduct = () =>
@@ -97,10 +99,24 @@ export default function ProductDetailScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ title: product.name }} />
-      <Title>{product.name}</Title>
-      <Body muted>
-        {[product.brand, t(`categories.${product.category}`), product.barcode].filter(Boolean).join(' · ')}
-      </Body>
+      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+        {product.imageUrl ? (
+          <Image source={{ uri: product.imageUrl }} style={{ width: 72, height: 72, borderRadius: 20 }} resizeMode="cover" accessible={false} />
+        ) : (
+          <CategoryAvatar category={product.category} size={72} />
+        )}
+        <View style={{ flex: 1, gap: 4 }}>
+          <Title>{product.name}</Title>
+          <Body muted small>
+            {[product.brand, t(`categories.${product.category}`), product.barcode].filter(Boolean).join(' · ')}
+          </Body>
+          {lots.length > 0 ? (
+            <Badge label={`${t('product.total')}: ${qty(summary.totalMilli, product.defaultUnit)}`} tone="success" icon="cube" />
+          ) : (
+            <Badge label={t('inventory.noStock')} tone="neutral" />
+          )}
+        </View>
+      </Card>
       {product.notes ? <Body>{product.notes}</Body> : null}
       {message ? <Notice message={message.text} tone={message.tone} /> : null}
 

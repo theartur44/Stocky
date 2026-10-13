@@ -145,6 +145,9 @@ Se mantiene `apps/android` como nombre por petición, aunque el código Expo es 
 | `expo-notifications` | Notificaciones locales programadas y canales Android | Notifee (dependencia extra) |
 | `expo-crypto` | `randomUUID()` criptográficamente seguro para IDs | `uuid` + polyfill |
 | `@expo/vector-icons` | Iconos de la barra inferior | SVG propios |
+| `expo-splash-screen` | Pantalla de carga nativa con el logo, visible hasta que la base de datos está lista | Pantalla de carga en JS (parpadeo al arrancar) |
+| `expo-haptics` | Vibración breve al leer un código en el escaneo rápido (confirma sin mirar la pantalla) | Sonido (requiere otra dependencia y molesta en tiendas) |
+| `expo-linear-gradient` | Degradados de la marca (cabeceras, botón de escanear) | Imágenes de fondo |
 | `expo-status-bar` | Barra de estado según tema | — |
 | `jest`, `jest-expo`, `@types/jest` (dev) | Pruebas unitarias con el preset oficial | Vitest (sin soporte RN oficial) |
 
@@ -169,6 +172,17 @@ Se mantiene `apps/android` como nombre por petición, aunque el código Expo es 
 | 6 | Documentación legal y de pruebas, scripts de secretos y licencias | Revisión; scripts ejecutados | Borradores pendientes de revisión profesional |
 | 7 | Esqueleto del servidor (FastAPI), Docker Compose, contrato de sincronización, CI | `pytest`, `docker compose config` | Hecho; imagen Docker no construida |
 | 8 | Prueba en dispositivo Android real | Checklist manual en `docs/pruebas.md §4` | **Pendiente** (requiere SDK/dispositivo) |
+
+### Etapa 9 (2026-10-13): rediseño visual y escaneo rápido
+
+- Logo propio (tarro con niveles de existencias y hoja) generado desde `apps/android/assets/brand/` (`node assets/brand/render.mjs <ruta-a-chrome>`). Vista previa: `docs/logo-preview.png`.
+- Pantalla de carga nativa con el logo (`expo-splash-screen`) que se oculta con fundido al terminar de abrir la base de datos.
+- Tema renovado: tarjetas con sombra, degradados de marca, animación al pulsar, avatares por categoría, avisos emergentes.
+- Barra inferior con botón central de escanear.
+- **Escaneo rápido**: la cámara queda abierta; cada código se añade al instante a una bandeja; los datos se buscan en segundo plano (hasta 3 a la vez) sin bloquear el siguiente escaneo; repetir un código suma un envase; atajos de fecha («≈ 1 mes», marcadas como aproximadas); se guarda todo en una única transacción, al inventario o a la lista.
+- Migración 2: tamaño del envase en el catálogo (`pack_quantity_milli`) para convertir envases en cantidades (6 × 1 l = 6 l).
+- Lista de la compra con entrada rápida («2 leche», «arroz 1 kg»), sugerencias de lo que se acaba, −/+ por artículo y botón fijo para pasar al inventario.
+- Inventario con buscador, filtros por ubicación y «por caducar», y botón «−1» para gastar un envase.
 
 ### Siguientes etapas propuestas
 

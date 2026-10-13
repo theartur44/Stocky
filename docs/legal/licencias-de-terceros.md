@@ -21,6 +21,9 @@
 | expo-status-bar | 57.0.1 | MIT |
 | expo-system-ui | 57.0.4 | MIT |
 | expo-asset | 57.0.19 | MIT |
+| expo-splash-screen | 57.0.x | MIT |
+| expo-haptics | 57.0.x | MIT |
+| expo-linear-gradient | 57.0.x | MIT |
 | expo-font | 57.0.4 | MIT |
 | @expo/vector-icons (incluye Ionicons) | 15.1.1 | MIT |
 | react / react-dom | 19.2.3 | MIT |
@@ -76,7 +79,7 @@ No figuran en npm; se añaden al compilar. [VERIFICAR la lista completa con `./g
 | Open Food Facts — contenidos individuales | Ídem | Database Contents License (DbCL) 1.0 [VERIFICAR] | — |
 | Open Food Facts — imágenes de producto | Miniatura mostrada al dar de alta un producto | Creative Commons Attribution-ShareAlike [VERIFICAR versión] | Atribución. Las imágenes pueden contener marcas registradas de terceros |
 | Recetas incluidas | Base local de recetas | Redactadas para Stoky (licencia del proyecto) | — |
-| Iconos de la app | Plantilla de Expo | [VERIFICAR / sustituir por iconos propios antes de publicar] | — |
+| Logo e iconos de la app | Diseño propio de Stoky (`apps/android/assets/brand/`) | Licencia del proyecto | — |
 
 La app muestra la atribución «Datos de productos: Open Food Facts (licencia ODbL)» en Ajustes → Acerca de.
 

@@ -31,6 +31,18 @@ describe('migraciones de SQLite', () => {
     expect(await db.get<{ value: string }>("SELECT value FROM settings WHERE key = 'warnDays'")).toEqual({ value: '3' });
   });
 
+  it('migra de la versión 1 a la 2 conservando los productos', async () => {
+    const db = openTestDatabase();
+    await migrate(db, MIGRATIONS.slice(0, 1));
+    await db.run(
+      `INSERT INTO products (id, name, name_key, category, default_unit, default_location, created_at, updated_at)
+       VALUES ('p1', 'Arroz', 'arroz', 'grains_pasta', 'kg', 'pantry', 'x', 'x')`,
+    );
+    expect(await migrate(db)).toBe(LATEST_SCHEMA_VERSION);
+    expect(await db.get('SELECT name, pack_quantity_milli FROM products')).toEqual({ name: 'Arroz', pack_quantity_milli: null });
+    await expect(db.run("UPDATE products SET pack_quantity_milli = 0 WHERE id = 'p1'")).rejects.toThrow(/CHECK/);
+  });
+
   it('deshace por completo una migración que falla', async () => {
     const db = openTestDatabase();
     await migrate(db);

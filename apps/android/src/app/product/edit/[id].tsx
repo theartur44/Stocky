@@ -29,6 +29,7 @@ export default function EditProductScreen() {
         defaultUnit: p.defaultUnit,
         defaultLocation: p.defaultLocation,
         lowStock: p.lowStockThresholdMilli ? formatMilli(p.lowStockThresholdMilli) : '',
+        pack: p.packQuantityMilli ? formatMilli(p.packQuantityMilli) : '',
         notes: p.notes ?? '',
         imageUrl: p.imageUrl,
         source: p.source,

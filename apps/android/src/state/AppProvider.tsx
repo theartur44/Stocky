@@ -1,4 +1,5 @@
 import { randomUUID } from 'expo-crypto';
+import * as SplashScreen from 'expo-splash-screen';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { openAppDatabase } from '../data/expoConnection';
@@ -12,9 +13,10 @@ import type { ChangeScope, ServiceContext } from '../services/context';
 import { createInventoryService, type InventoryService } from '../services/inventoryService';
 import { createPrivacyService, type PrivacyService } from '../services/privacyService';
 import { createRecipeService, type RecipeService } from '../services/recipeService';
+import { createScanService, type ScanService } from '../services/scanService';
 import { createSettingsService, DEFAULT_SETTINGS, type Settings, type SettingsService } from '../services/settingsService';
 import { createShoppingService, type ShoppingService } from '../services/shoppingService';
-import { ErrorView, LoadingView } from '../ui/components';
+import { ErrorView } from '../ui/components';
 import { logError } from './errors';
 
 export interface Services {
@@ -23,6 +25,7 @@ export interface Services {
   settings: SettingsService;
   recipes: RecipeService;
   privacy: PrivacyService;
+  scan: ScanService;
 }
 
 type Listener = (scope: ChangeScope) => void;
@@ -52,8 +55,13 @@ function buildServices(ctx: ServiceContext): Services {
     settings: createSettingsService(ctx),
     recipes: createRecipeService(ctx, inventory),
     privacy: createPrivacyService(ctx),
+    scan: createScanService(ctx),
   };
 }
+
+// La pantalla de carga (logo) se mantiene hasta que la base de datos está lista.
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
+SplashScreen.setOptions({ fade: true, duration: 350 });
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<
@@ -133,6 +141,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [attempt, syncNotifications]);
 
+  useEffect(() => {
+    if (state.status !== 'loading') SplashScreen.hideAsync().catch(() => undefined);
+  }, [state.status]);
+
   const subscribe = useCallback((fn: Listener) => {
     listeners.current.add(fn);
     return () => {
@@ -145,7 +157,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [state, settings, subscribe, syncNotifications],
   );
 
-  if (state.status === 'loading') return <LoadingView />;
+  // Mientras carga se ve la pantalla de inicio nativa con el logo.
+  if (state.status === 'loading') return null;
   if (state.status === 'error' || !value) {
     return <ErrorView message={t('errors.storage')} onRetry={() => {
       setState({ status: 'loading' });

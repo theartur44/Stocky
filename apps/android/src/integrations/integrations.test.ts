@@ -2,7 +2,7 @@ import { AppError } from '../domain/errors';
 import { planExpiryNotifications } from '../domain/notificationPlan';
 import { t } from '../i18n';
 import { formatNotification } from './notifications';
-import { guessCategory, lookupProduct, parseOffResponse } from './openFoodFacts';
+import { guessCategory, lookupProduct, parseOffResponse, parsePack } from './openFoodFacts';
 
 function fakeFetch(status: number, body: unknown): jest.MockedFunction<typeof fetch> {
   return jest.fn(async () => ({
@@ -46,7 +46,8 @@ describe('Open Food Facts', () => {
         brand: null,
         imageUrl: 'https://images.openfoodfacts.org/x.jpg',
         category: 'snacks',
-        suggestedUnit: 'g',
+        suggestedUnit: 'unit',
+        packQuantityMilli: null,
         source: 'openfoodfacts',
       },
     });
@@ -96,6 +97,15 @@ describe('Open Food Facts', () => {
     const f = fakeFetch(200, {});
     await expect(lookupProduct('../../etc', { fetchFn: f })).rejects.toMatchObject({ code: 'validation' });
     expect(f).not.toHaveBeenCalled();
+  });
+
+  it('interpreta el contenido del envase', () => {
+    expect(parsePack(500, 'g')).toEqual({ unit: 'g', packQuantityMilli: 500_000 });
+    expect(parsePack('33', 'cl')).toEqual({ unit: 'ml', packQuantityMilli: 330_000 });
+    expect(parsePack(1.5, 'L')).toEqual({ unit: 'l', packQuantityMilli: 1500 });
+    expect(parsePack(6, 'unidades')).toEqual({ unit: 'unit', packQuantityMilli: null });
+    expect(parsePack(null, 'g')).toEqual({ unit: 'unit', packQuantityMilli: null });
+    expect(parsePack(-1, 'g')).toEqual({ unit: 'unit', packQuantityMilli: null });
   });
 
   it('asigna categoría por la etiqueta más específica', () => {

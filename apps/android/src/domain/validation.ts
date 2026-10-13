@@ -22,6 +22,7 @@ export interface ProductInput {
   defaultUnit: Unit;
   defaultLocation: Location;
   lowStockThresholdMilli?: number | null;
+  packQuantityMilli?: number | null;
   imageUrl?: string | null;
   source?: 'manual' | 'openfoodfacts';
   notes?: string | null;
@@ -82,6 +83,10 @@ export function validateProductInput(input: ProductInput): Required<ProductInput
   const threshold = input.lowStockThresholdMilli ?? null;
   if (threshold !== null && !isValidQuantity(threshold)) errors.lowStockThresholdMilli = 'errors.invalidQuantity';
 
+  let pack = input.packQuantityMilli ?? null;
+  // El tamaño de envase solo tiene sentido con peso o volumen.
+  if (pack !== null && (!isValidQuantity(pack) || input.defaultUnit === 'unit')) pack = null;
+
   let imageUrl = input.imageUrl ?? null;
   if (imageUrl !== null && !isSafeImageUrl(imageUrl)) imageUrl = null;
 
@@ -95,6 +100,7 @@ export function validateProductInput(input: ProductInput): Required<ProductInput
     defaultUnit: input.defaultUnit,
     defaultLocation: input.defaultLocation,
     lowStockThresholdMilli: threshold,
+    packQuantityMilli: pack,
     imageUrl,
     source: input.source === 'openfoodfacts' ? 'openfoodfacts' : 'manual',
     notes,

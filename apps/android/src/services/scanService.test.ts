@@ -48,6 +48,7 @@ describe('flujo del escáner', () => {
       imageUrl: null,
       category: 'snacks' as const,
       suggestedUnit: 'g' as const,
+      packQuantityMilli: 400_000,
       source: 'openfoodfacts' as const,
     };
     const found = await resolveScan(EAN, 'ean13', { ...s, lookup: async () => ({ status: 'found', product: external }) });

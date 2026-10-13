@@ -1,4 +1,5 @@
 import { lotRepo, productRepo, shoppingRepo } from '../data/repositories';
+import type { SqlExecutor } from '../data/sql';
 import { toLocalDate, type LocalDate } from '../domain/dates';
 import { AppError } from '../domain/errors';
 import type { ExpiryKind } from '../domain/expiry';
@@ -34,6 +35,38 @@ export interface AddItemResult {
   item: ShoppingItem;
   /** `true` si se ha sumado a un artículo pendiente en vez de crear otro. */
   merged: boolean;
+}
+
+/**
+ * Añade un artículo dentro de una transacción ya abierta. Si ya hay uno
+ * pendiente del mismo producto (o con el mismo nombre) y unidad compatible,
+ * suma la cantidad en lugar de duplicarlo.
+ */
+export async function addItemTx(
+  tx: SqlExecutor,
+  ctx: ServiceContext,
+  listId: string,
+  input: NewItem,
+): Promise<AddItemResult> {
+  const name = validateItemName(input.name);
+  assertValidQuantity(input.quantityMilli);
+  const productId = input.productId ?? null;
+  if (!(await shoppingRepo.getList(tx, listId))) throw new AppError('not_found', 'List not found');
+  const now = nowIso(ctx);
+  const matches = await shoppingRepo.pendingMatches(tx, listId, productId, normalizeKey(name));
+  const target = matches.find((m) => areCompatible(m.unit, input.unit));
+  if (target) {
+    const total = addQuantities(
+      { milli: target.quantityMilli, unit: target.unit },
+      { milli: input.quantityMilli, unit: input.unit },
+    );
+    await shoppingRepo.setItemQuantity(tx, target.id, total, target.unit, now);
+    if (productId && !target.productId) await shoppingRepo.setProduct(tx, target.id, productId, now);
+    return { item: (await shoppingRepo.getItem(tx, target.id))!, merged: true };
+  }
+  const id = ctx.newId();
+  await shoppingRepo.insertItem(tx, { id, listId, productId, name, quantityMilli: input.quantityMilli, unit: input.unit }, now);
+  return { item: (await shoppingRepo.getItem(tx, id))!, merged: false };
 }
 
 export function createShoppingService(ctx: ServiceContext) {
@@ -78,31 +111,7 @@ export function createShoppingService(ctx: ServiceContext) {
      * mismo nombre) y unidad compatible, suma la cantidad en lugar de duplicarlo.
      */
     async addItem(listId: string, input: NewItem): Promise<AddItemResult> {
-      const name = validateItemName(input.name);
-      assertValidQuantity(input.quantityMilli);
-      const productId = input.productId ?? null;
-      const result = await db.transaction(async (tx) => {
-        if (!(await shoppingRepo.getList(tx, listId))) throw new AppError('not_found', 'List not found');
-        const now = nowIso(ctx);
-        const matches = await shoppingRepo.pendingMatches(tx, listId, productId, normalizeKey(name));
-        const target = matches.find((m) => areCompatible(m.unit, input.unit));
-        if (target) {
-          const total = addQuantities(
-            { milli: target.quantityMilli, unit: target.unit },
-            { milli: input.quantityMilli, unit: input.unit },
-          );
-          await shoppingRepo.setItemQuantity(tx, target.id, total, target.unit, now);
-          if (productId && !target.productId) await shoppingRepo.setProduct(tx, target.id, productId, now);
-          return { item: (await shoppingRepo.getItem(tx, target.id))!, merged: true };
-        }
-        const id = ctx.newId();
-        await shoppingRepo.insertItem(
-          tx,
-          { id, listId, productId, name, quantityMilli: input.quantityMilli, unit: input.unit },
-          now,
-        );
-        return { item: (await shoppingRepo.getItem(tx, id))!, merged: false };
-      });
+      const result = await db.transaction((tx) => addItemTx(tx, ctx, listId, input));
       changed();
       return result;
     },
