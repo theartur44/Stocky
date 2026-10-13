@@ -61,7 +61,7 @@ El escáner usa la biblioteca de Google ML Kit incluida en la app. El análisis 
 
 ### 5.3. Servicios del sistema
 
-- **Notificaciones**: los avisos son **locales**; se programan en el propio dispositivo. La app no solicita tokens de notificaciones push ni usa Firebase Cloud Messaging, aunque la biblioteca `expo-notifications` incluye su código. [VERIFICAR en la compilación final que no se inicializa Firebase ni se registran tokens.]
+- **Notificaciones**: los avisos son **locales**; se programan en el propio dispositivo. La app no solicita tokens de notificaciones push ni usa Firebase Cloud Messaging, aunque la biblioteca `expo-notifications` incluye su código. El permiso de recepción de mensajes push (`c2dm.permission.RECEIVE`) y el de origen de instalación de Google Play se eliminan del manifiesto. [VERIFICAR en dispositivo que no se inicializa Firebase ni se registran tokens.]
 - **Google Play** (si se distribuye por esta vía): Google trata datos relacionados con la descarga y las actualizaciones conforme a su propia política.
 
 ## 6. Base jurídica

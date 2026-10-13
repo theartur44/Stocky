@@ -26,7 +26,8 @@ Las pruebas **no** cubren: cámara real, notificaciones reales del sistema, rend
 Verificación adicional realizada en el entorno de desarrollo (sin Android SDK):
 
 - `npx expo export --platform android`: el código se empaqueta correctamente para Hermes.
-- `npx expo prebuild --platform android`: el AndroidManifest generado contiene `allowBackup="false"`, `CAMERA`, `POST_NOTIFICATIONS`, `INTERNET` y elimina los permisos bloqueados. El manifiesto **fusionado** (con las bibliotecas) no se ha podido comprobar sin Android SDK.
+- `npx expo prebuild --platform android`: el AndroidManifest generado contiene `allowBackup="false"`, `CAMERA`, `POST_NOTIFICATIONS`, `INTERNET` y elimina los permisos bloqueados.
+- APK compilado en GitHub Actions (primera compilación, commit `5863aa2`): `minSdk 24`, `targetSdk 36`, ABIs arm64-v8a/armeabi-v7a/x86_64. El manifiesto fusionado añadía permisos de bibliotecas: `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE` (reprogramar avisos tras reiniciar), `ACCESS_NETWORK_STATE`, y además `c2dm.permission.RECEIVE` (push de Firebase), `BIND_GET_INSTALL_REFERRER_SERVICE` (origen de instalación de Google Play) y ~20 permisos de contador de avisos en el icono de distintos fabricantes. Estos últimos no se usan y se han bloqueado en `app.json`; verificar `permisos.txt` del siguiente artefacto.
 
 ## 2. Comprobaciones antes de publicar
 
