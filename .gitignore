@@ -1,0 +1,52 @@
+# ---- Secretos y credenciales (nunca versionar) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
+*.keystore
+!debug.keystore
+google-services.json
+GoogleService-Info.plist
+credentials.json
+*.secret
+secrets/
+
+# ---- Datos locales y copias ----
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+backups/
+*.dump
+
+# ---- Node / Expo ----
+node_modules/
+.expo/
+dist/
+web-build/
+coverage/
+*.tsbuildinfo
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Editores / SO ----
+.DS_Store
+.idea/
+.vscode/
+*.swp
