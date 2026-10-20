@@ -1,14 +1,19 @@
-# Stocky API (fase futura)
+# Stocky API (servidor de sincronización)
 
-> **No necesaria para la v1.** La app funciona sin servidor. Este directorio contiene un esqueleto verificable (`/api/v1/health`) y el contrato previsto para la sincronización opcional entre dispositivos de un hogar.
+> **Opcional.** La app funciona sin servidor. Este servicio permite compartir inventario y listas entre los dispositivos de un hogar. **Instalación con Docker: [docs/servidor-docker.md](../../docs/servidor-docker.md).**
 
 ## Estado
 
 | Elemento | Estado |
 |---|---|
-| FastAPI con `/api/v1/health`, cabeceras de seguridad, hosts permitidos, límite de tamaño | Implementado y probado (`pytest`) |
-| Dockerfile (usuario sin privilegios) y `infra/docker/docker-compose.yml` (PostgreSQL sin puertos publicados) | Escrito; `docker compose config` validado; **imagen no construida** en el entorno de desarrollo |
-| Autenticación, hogares, sincronización | Solo especificado (este documento) |
+| Cuentas (registro con código, inicio de sesión, renovación rotatoria con detección de reutilización, cierre de sesión, cambio de contraseña, borrado de cuenta) | Implementado y probado |
+| Dispositivos (listar, revocar al instante) | Implementado y probado |
+| Hogares (crear, invitaciones de un solo uso, roles owner/member/viewer, expulsar, abandonar, borrar, exportar JSON) | Implementado y probado |
+| Sincronización (push idempotente, pull incremental paginado, conflictos por revisión, deltas de cantidad, lápidas y purga) | Implementado y probado |
+| Cifrado de datos en reposo (AES-256-GCM con AAD por fila, rotación de claves) | Implementado y probado |
+| PostgreSQL con TLS 1.3 verificado + SCRAM; migraciones Alembic | Probado con PostgreSQL 16 real (`STOCKY_TEST_DATABASE_URL`) y en la pila Docker con PostgreSQL 17 |
+| Pila Docker (Caddy HTTPS + API + PostgreSQL en red interna), copias cifradas y restauración | Probada de extremo a extremo |
+| Conexión desde la app | **Pendiente** (siguiente etapa) |
 
 ## Desarrollo
 
@@ -16,24 +21,37 @@
 cd services/api
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
-python -m pytest
-STOKY_ENV=development uvicorn app.main:create_app --factory --reload
+python -m pytest                      # SQLite en memoria
+STOCKY_TEST_DATABASE_URL='postgresql+psycopg://…?sslmode=verify-full&sslrootcert=…' python -m pytest   # PostgreSQL real
+STOCKY_ENV=development uvicorn app.main:create_app --factory --reload
 ```
 
-Con Docker:
+Migraciones: `alembic upgrade head` (la URL sale de la configuración). Tras cambiar `app/models.py`: `alembic revision --autogenerate -m "…"` y revisar el fichero generado; `alembic check` debe decir que no hay cambios pendientes.
 
-```bash
-cd infra/docker
-cp .env.example .env   # y define POSTGRES_PASSWORD
-docker compose up --build
-```
+### Configuración (variables de entorno)
+
+Cada secreto admite la variante `_FILE` (ruta a un fichero), que es la que usa Docker.
+
+| Variable | Obligatoria en producción | Descripción |
+|---|---|---|
+| `STOCKY_ENV` | — | `development`, `test` o `production` |
+| `STOCKY_ALLOWED_HOSTS` | Sí | Dominios aceptados en la cabecera Host |
+| `STOCKY_JWT_SECRET` | Sí (≥ 32 caracteres) | Firma de los tokens de acceso |
+| `STOCKY_EMAIL_PEPPER` | Sí (≥ 32 caracteres) | Clave del índice HMAC de correos |
+| `STOCKY_DATA_KEYS` | Sí | `id:base64(32 bytes)[,id:…]`; la primera cifra, las demás solo descifran |
+| `STOCKY_REGISTRATION` | — | `invite_code` (por defecto), `open` o `closed` |
+| `STOCKY_REGISTRATION_CODE` | Sí con `invite_code` (≥ 12) | Código para crear cuentas |
+| `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Sí | Conexión a PostgreSQL |
+| `POSTGRES_SSLMODE` / `POSTGRES_SSLROOTCERT` | `verify-full` por defecto | En producción solo se admite `verify-full`, `verify-ca` o `require` |
+
+Herramientas: `python -m app.cli reset-password | purge | rotate-keys | generate-secrets`.
 
 ## Principios de seguridad
 
 - Solo HTTPS en producción (TLS en el proxy inverso; HSTS). PostgreSQL nunca expuesto a Internet.
 - El **hogar se deriva del token**, nunca de un parámetro enviado por el cliente. Toda consulta filtra por `household_id`. Un dispositivo manipulado no puede pedir datos de otro hogar: el servidor responde `404` (no `403`) para no revelar su existencia.
 - Contraseñas con Argon2id (biblioteca `argon2-cffi`), nunca en claro ni en registros.
-- Tokens de acceso JWT/PASETO de 15 min; tokens de refresco opacos, rotatorios, guardados como hash y revocables por dispositivo.
+- Tokens de acceso JWT (HS256) de 15 min; tokens de refresco opacos, rotatorios, guardados como hash y revocables por dispositivo.
 - Limitación de peticiones por IP y por cuenta en `/auth/*` y `/sync/*`.
 - Mensajes idénticos para usuario inexistente y contraseña incorrecta; el registro y la recuperación de cuenta responden siempre igual (anti-enumeración).
 - Validación de todas las entradas con modelos Pydantic estrictos y tamaños máximos. Además del límite por `Content-Length` del esqueleto, el proxy inverso debe limitar el tamaño de las peticiones sin esa cabecera.
@@ -46,12 +64,15 @@ docker compose up --build
 
 | Método y ruta | Descripción |
 |---|---|
-| `POST /auth/register` | Alta con correo y contraseña. Respuesta siempre `202` |
+| `POST /auth/register` | Alta con correo, contraseña (12+) y código de registro. `201` con tokens; errores genéricos (`400 registration_failed`, `403`) |
 | `POST /auth/login` | Devuelve token de acceso + token de refresco ligado a un `device_id` |
 | `POST /auth/refresh` | Rota el token de refresco (el anterior queda invalidado; reutilizarlo revoca la familia) |
 | `POST /auth/logout` | Revoca el token del dispositivo actual |
 | `GET /devices` / `DELETE /devices/{id}` | Ver y revocar dispositivos de la cuenta |
-| `POST /auth/recover` / `POST /auth/recover/confirm` | Recuperación por enlace de un solo uso, caducidad 30 min, respuesta uniforme |
+| — | Recuperación de cuenta: por ahora la hace quien administra el servidor (`python -m app.cli reset-password`), porque el servidor no envía correos |
+| `POST /auth/change-password` | Cambia la contraseña y cierra las demás sesiones |
+| `DELETE /account` | Borra la cuenta (y el hogar si era su único propietario) |
+| `GET /me` | Usuario, hogar y rol |
 
 ### Hogares y miembros
 

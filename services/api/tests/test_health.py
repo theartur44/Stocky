@@ -6,7 +6,11 @@ from app.main import create_app
 
 
 def client(env: dict[str, str] | None = None) -> TestClient:
-    return TestClient(create_app(load_settings(env or {"STOKY_ENV": "test"})))
+    return TestClient(create_app(load_settings(env or {"STOCKY_ENV": "test"})))
+
+
+def test_ready_checks_database():
+    assert client().get("/api/v1/ready").json() == {"status": "ready"}
 
 
 def test_health_is_versioned_and_minimal():
@@ -22,7 +26,7 @@ def test_security_headers():
 
 
 def test_unknown_routes_return_404():
-    assert client().get("/api/v1/households").status_code == 404
+    assert client().get("/api/v1/no-existe").status_code == 404
 
 
 def test_rejects_oversized_body():
@@ -31,13 +35,17 @@ def test_rejects_oversized_body():
 
 
 def test_rejects_unexpected_host():
-    c = client({"STOKY_ENV": "test", "STOKY_ALLOWED_HOSTS": "api.example.test"})
+    c = client({"STOCKY_ENV": "test", "STOCKY_ALLOWED_HOSTS": "api.example.test"})
     assert c.get("/api/v1/health").status_code == 400
 
 
 def test_production_hides_docs_and_sets_hsts():
-    env = {"STOKY_ENV": "production", "STOKY_ALLOWED_HOSTS": "testserver"}
-    c = client(env)
+    from sqlalchemy import create_engine
+
+    from .test_security import prod_env
+
+    settings = load_settings(prod_env(STOCKY_ALLOWED_HOSTS="testserver"))
+    c = TestClient(create_app(settings, engine=create_engine("sqlite+pysqlite:///:memory:")))
     assert c.get("/docs").status_code == 404
     assert c.get("/openapi.json").status_code == 404
     assert "Strict-Transport-Security" in c.get("/api/v1/health").headers
@@ -46,10 +54,10 @@ def test_production_hides_docs_and_sets_hsts():
 @pytest.mark.parametrize(
     "env",
     [
-        {"STOKY_ENV": "production"},
-        {"STOKY_ENV": "production", "STOKY_ALLOWED_HOSTS": "*"},
-        {"STOKY_ENV": "staging"},
-        {"STOKY_MAX_BODY_BYTES": "abc"},
+        {"STOCKY_ENV": "production"},
+        {"STOCKY_ENV": "production", "STOCKY_ALLOWED_HOSTS": "*"},
+        {"STOCKY_ENV": "staging"},
+        {"STOCKY_MAX_BODY_BYTES": "abc"},
     ],
 )
 def test_invalid_configuration_fails_fast(env):

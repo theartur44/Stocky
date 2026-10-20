@@ -36,7 +36,8 @@ fi
 
 for p in "${patterns[@]}"; do
   # Se excluye este propio script, que contiene los patrones.
-  hits=$(echo "$files" | grep -v '^scripts/check-secrets.sh$' | xargs -r grep -n -I -E -i -- "$p" 2>/dev/null || true)
+  # Las líneas revisadas a mano (datos ficticios de pruebas) llevan «secret-scan: ignore».
+  hits=$(echo "$files" | grep -v '^scripts/check-secrets.sh$' | xargs -r grep -n -I -E -i -- "$p" 2>/dev/null | grep -v 'secret-scan: ignore' || true)
   if [[ -n "$hits" ]]; then
     echo "Posible secreto (patrón: $p):"
     # Se muestra solo fichero y línea, no el valor.

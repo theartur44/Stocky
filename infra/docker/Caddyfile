@@ -1,0 +1,32 @@
+# Proxy inverso con HTTPS automático (Let's Encrypt) delante de la API.
+{
+	email {$ACME_EMAIL}
+	# Sin panel de administración expuesto.
+	admin off
+}
+
+{$STOCKY_DOMAIN} {
+	encode zstd gzip
+
+	request_body {
+		max_size 1MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# Solo se publica la API; cualquier otra ruta responde 404.
+	handle /api/* {
+		reverse_proxy api:8000 {
+			header_up -X-Forwarded-Host
+		}
+	}
+
+	handle {
+		respond 404
+	}
+}

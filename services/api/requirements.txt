@@ -1,3 +1,9 @@
-# Dependencias del servidor (fase futura). Versiones fijadas; actualizar de forma deliberada.
+# Dependencias del servidor. Versiones fijadas; actualizar de forma deliberada.
 fastapi==0.143.0
 uvicorn==0.54.0
+SQLAlchemy==2.1.5
+psycopg[binary]==3.3.6
+alembic==1.20.0
+argon2-cffi==25.1.0
+PyJWT==2.15.1
+cryptography==50.0.2
