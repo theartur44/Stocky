@@ -358,13 +358,40 @@ export function ChipGroup<T extends string>({
     <View style={styles.field} accessibilityRole="radiogroup" accessibilityLabel={label}>
       {label ? <Text style={[styles.label, { color: colors.textMuted }]}>{label}</Text> : null}
       {scroll ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-          {chips}
-        </ScrollView>
+        <HorizontalScroller contentContainerStyle={styles.chipsRow}>{chips}</HorizontalScroller>
       ) : (
         <View style={styles.chips}>{chips}</View>
       )}
     </View>
+  );
+}
+
+/**
+ * Fila desplazable en horizontal (carrusel). Con desplazamiento anidado para
+ * que Android no la confunda con el desplazamiento vertical de la pantalla y
+ * un difuminado en el borde que indica que hay más contenido.
+ */
+export function HorizontalScroller({
+  children,
+  contentContainerStyle,
+}: {
+  children: ReactNode;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <ScrollView
+      horizontal
+      nestedScrollEnabled
+      showsHorizontalScrollIndicator={false}
+      fadingEdgeLength={32}
+      decelerationRate="fast"
+      keyboardShouldPersistTaps="handled"
+      directionalLockEnabled
+      style={styles.scroller}
+      contentContainerStyle={contentContainerStyle}
+    >
+      {children}
+    </ScrollView>
   );
 }
 
@@ -612,7 +639,8 @@ export const styles = StyleSheet.create({
   },
   help: { fontSize: font.small },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chipsRow: { flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.lg },
+  chipsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingRight: spacing.xl, paddingVertical: 2 },
+  scroller: { flexGrow: 0 },
   chip: {
     minHeight: 40,
     flexDirection: 'row',

@@ -20,6 +20,7 @@ import {
   EmptyState,
   ErrorView,
   FadeIn,
+  HorizontalScroller,
   IconButton,
   LoadingView,
   PressableScale,
@@ -185,7 +186,7 @@ export default function ShoppingScreen() {
         {suggestions.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
             <Text style={[styles.overline, { color: colors.textMuted }]}>{t('shopping.suggestions')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+            <HorizontalScroller contentContainerStyle={{ flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.xl }}>
               {suggestions.map((p) => (
                 <PressableScale
                   key={p.id}
@@ -200,7 +201,7 @@ export default function ShoppingScreen() {
                   </Text>
                 </PressableScale>
               ))}
-            </ScrollView>
+            </HorizontalScroller>
           </View>
         ) : null}
 

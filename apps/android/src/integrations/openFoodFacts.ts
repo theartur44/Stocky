@@ -52,7 +52,7 @@ export interface LookupOptions {
 function defaultUserAgent(): string {
   const version = Constants.expoConfig?.version ?? '0.0.0';
   // Open Food Facts pide identificar la app; no se incluye ningún dato del usuario.
-  return `Stoky/${version} (Android; app de inventario domestico)`;
+  return `Stocky/${version} (Android; app de inventario domestico)`;
 }
 
 /** Limpia texto externo: sin caracteres de control, espacios simples, longitud acotada. */

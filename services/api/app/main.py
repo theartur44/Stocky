@@ -1,4 +1,4 @@
-"""Servidor de sincronización de Stoky (esqueleto, fase futura).
+"""Servidor de sincronización de Stocky (esqueleto, fase futura).
 
 Solo expone `/api/v1/health`. Las rutas de autenticación, hogares y
 sincronización están especificadas en `services/api/README.md` y se
@@ -26,7 +26,7 @@ SECURITY_HEADERS = {
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or load_settings()
     app = FastAPI(
-        title="Stoky API",
+        title="Stocky API",
         version="0.1.0",
         # La documentación interactiva no se expone en producción.
         docs_url=None if settings.is_production else "/docs",

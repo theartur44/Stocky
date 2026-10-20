@@ -19,7 +19,7 @@ describe('Open Food Facts', () => {
 
   it('envía solo el código de barras, sin cookies', async () => {
     const f = fakeFetch(200, { status: 1, product: { product_name: 'Crema de cacao', brands: 'Marca A, Marca B' } });
-    const r = await lookupProduct(code, { fetchFn: f, userAgent: 'Stoky/test' });
+    const r = await lookupProduct(code, { fetchFn: f, userAgent: 'Stocky/test' });
     expect(r).toMatchObject({ status: 'found', product: { name: 'Crema de cacao', brand: 'Marca A' } });
     const [url, init] = f.mock.calls[0]!;
     expect(String(url)).toMatch(new RegExp(`^https://world\\.openfoodfacts\\.org/api/v2/product/${code}\\.json\\?fields=`));

@@ -33,7 +33,7 @@ Los datos se conservan solo mientras el usuario los necesita (art. 5.1.e RGPD, l
 4. Con `PRAGMA secure_delete = ON`, el contenido borrado se sobrescribe con ceros.
 5. Crea una lista de la compra vacía para que la app siga funcionando.
 
-Limitaciones: el borrado lógico en almacenamiento flash no garantiza la eliminación física de copias anteriores gestionadas por el controlador del dispositivo; la protección efectiva depende del cifrado del sistema de Android. Para eliminar todo rastro, el usuario puede además **desinstalar la app** o usar Ajustes de Android → Aplicaciones → Stoky → Borrar almacenamiento.
+Limitaciones: el borrado lógico en almacenamiento flash no garantiza la eliminación física de copias anteriores gestionadas por el controlador del dispositivo; la protección efectiva depende del cifrado del sistema de Android. Para eliminar todo rastro, el usuario puede además **desinstalar la app** o usar Ajustes de Android → Aplicaciones → Stocky → Borrar almacenamiento.
 
 Prueba automatizada: `services.test.ts` → «elimina todos los datos locales».
 

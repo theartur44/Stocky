@@ -1,4 +1,4 @@
-# Stoky API (fase futura)
+# Stocky API (fase futura)
 
 > **No necesaria para la v1.** La app funciona sin servidor. Este directorio contiene un esqueleto verificable (`/api/v1/health`) y el contrato previsto para la sincronización opcional entre dispositivos de un hogar.
 

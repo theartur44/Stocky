@@ -1,4 +1,4 @@
-# Imagen del servidor Stoky (fase futura). Usuario sin privilegios, sin caché de pip.
+# Imagen del servidor Stocky (fase futura). Usuario sin privilegios, sin caché de pip.
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -8,10 +8,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /srv
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
-    && useradd --system --uid 10001 --home-dir /srv stoky
+    && useradd --system --uid 10001 --home-dir /srv stocky
 
 COPY app ./app
-USER stoky
+USER stocky
 
 EXPOSE 8000
 # Detrás de un proxy inverso con TLS. --proxy-headers solo si el proxy es de confianza.

@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Stoky",
-    "slug": "stoky",
+    "name": "Stocky",
+    "slug": "stocky",
     "version": "0.1.0",
-    "scheme": "stoky",
+    "scheme": "stocky",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -75,7 +75,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Stoky usa la cámara solo para leer códigos de barras.",
+          "cameraPermission": "Stocky usa la cámara solo para leer códigos de barras.",
           "microphonePermission": false,
           "recordAudioAndroid": false,
           "barcodeScannerEnabled": true

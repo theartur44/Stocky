@@ -1,5 +1,5 @@
 /**
- * Base de recetas incluida en la app. Textos redactados para Stoky (no
+ * Base de recetas incluida en la app. Textos redactados para Stocky (no
  * copiados de terceros). Cantidades orientativas.
  */
 import type { Recipe, RecipeProvider } from '../../domain/recipes';

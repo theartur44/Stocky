@@ -1,10 +1,10 @@
-# Documentación legal inicial de Stoky
+# Documentación legal inicial de Stocky
 
-> **BORRADORES PENDIENTES DE REVISIÓN PROFESIONAL.** Estos documentos se han preparado como punto de partida técnico. No constituyen asesoramiento jurídico y no acreditan el cumplimiento del RGPD, la LOPDGDD, la LSSI ni de ninguna otra norma. Antes de distribuir Stoky públicamente deben ser revisados por un profesional jurídico o de protección de datos y completados con los datos reales del responsable.
+> **BORRADORES PENDIENTES DE REVISIÓN PROFESIONAL.** Estos documentos se han preparado como punto de partida técnico. No constituyen asesoramiento jurídico y no acreditan el cumplimiento del RGPD, la LOPDGDD, la LSSI ni de ninguna otra norma. Antes de distribuir Stocky públicamente deben ser revisados por un profesional jurídico o de protección de datos y completados con los datos reales del responsable.
 
 ## Contexto que condiciona el análisis
 
-El tratamiento de datos depende de **cómo se distribuya** Stoky. Los documentos distinguen tres escenarios:
+El tratamiento de datos depende de **cómo se distribuya** Stocky. Los documentos distinguen tres escenarios:
 
 | Escenario | Descripción | Consecuencia principal |
 |---|---|---|

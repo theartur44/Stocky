@@ -1,4 +1,4 @@
-# Stoky — Análisis, arquitectura y plan de implementación
+# Stocky — Análisis, arquitectura y plan de implementación
 
 > Estado: documento vivo. Última revisión: 2026-10-13.
 > Describe decisiones reales tomadas en el código. Si el código y este documento discrepan, prevalece el código y debe corregirse el documento.

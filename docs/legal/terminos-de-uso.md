@@ -1,4 +1,4 @@
-# Términos de uso de Stoky
+# Términos de uso de Stocky
 
 > **BORRADOR PENDIENTE DE REVISIÓN JURÍDICA.** Las cláusulas de limitación de responsabilidad deben revisarse a la luz del Real Decreto Legislativo 1/2007 (Ley General para la Defensa de los Consumidores y Usuarios), que impide excluir ciertas responsabilidades frente a consumidores.
 
@@ -12,7 +12,7 @@
 
 ## 2. Objeto
 
-Stoky es una aplicación gratuita para gestionar el inventario de alimentos de un hogar, sus fechas, listas de la compra y sugerencias de recetas. Funciona en el dispositivo sin necesidad de cuenta.
+Stocky es una aplicación gratuita para gestionar el inventario de alimentos de un hogar, sus fechas, listas de la compra y sugerencias de recetas. Funciona en el dispositivo sin necesidad de cuenta.
 
 ## 3. Uso adecuado
 
@@ -20,7 +20,7 @@ Te comprometes a usar la app conforme a la ley y a estos términos, y a no inten
 
 ## 4. Fechas de caducidad y seguridad alimentaria
 
-- Stoky muestra las fechas **que tú registras** y calcula avisos orientativos. **No puede comprobar** el estado real de los alimentos.
+- Stocky muestra las fechas **que tú registras** y calcula avisos orientativos. **No puede comprobar** el estado real de los alimentos.
 - La «fecha de caducidad» y la «fecha de consumo preferente» tienen significados distintos (Reglamento (UE) n.º 1169/2011). Sigue siempre las indicaciones del envase y revisa la conservación, el aspecto y el olor.
 - Que un alimento no haya alcanzado una fecha **no garantiza** que sea seguro, ni superarla significa necesariamente lo contrario en el caso del consumo preferente.
 - Las fechas marcadas como «estimadas» son una suposición del usuario, no datos del fabricante.
@@ -45,7 +45,7 @@ Las recetas son orientativas. Comprueba los alérgenos y el estado de los ingred
 
 ## 9. Propiedad intelectual
 
-El código de Stoky se distribuye bajo la licencia [LICENCIA DEL PROYECTO — PENDIENTE DE DECIDIR]. Los componentes de terceros conservan sus licencias (ver `licencias-de-terceros.md`).
+El código de Stocky se distribuye bajo la licencia [LICENCIA DEL PROYECTO — PENDIENTE DE DECIDIR]. Los componentes de terceros conservan sus licencias (ver `licencias-de-terceros.md`).
 
 ## 10. Privacidad
 

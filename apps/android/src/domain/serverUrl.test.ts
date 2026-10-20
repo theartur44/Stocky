@@ -5,17 +5,17 @@ const dev = { production: false };
 
 describe('validación de la dirección del servidor', () => {
   it('acepta HTTPS y normaliza', () => {
-    expect(validateServerUrl(' https://Stoky.Example.org/api/ ', prod)).toEqual({
+    expect(validateServerUrl(' https://Stocky.Example.org/api/ ', prod)).toEqual({
       ok: true,
-      url: 'https://stoky.example.org/api',
+      url: 'https://stocky.example.org/api',
     });
     expect(validateServerUrl('https://10.0.0.5:8443', prod)).toEqual({ ok: true, url: 'https://10.0.0.5:8443' });
   });
 
   it('rechaza HTTP en producción y hacia Internet', () => {
-    expect(validateServerUrl('http://stoky.example.org', prod)).toEqual({ ok: false, error: 'insecure' });
+    expect(validateServerUrl('http://stocky.example.org', prod)).toEqual({ ok: false, error: 'insecure' });
     expect(validateServerUrl('http://localhost:8000', prod)).toEqual({ ok: false, error: 'insecure' });
-    expect(validateServerUrl('http://stoky.example.org', dev)).toEqual({ ok: false, error: 'insecure' });
+    expect(validateServerUrl('http://stocky.example.org', dev)).toEqual({ ok: false, error: 'insecure' });
   });
 
   it('permite HTTP solo a redes locales en desarrollo', () => {

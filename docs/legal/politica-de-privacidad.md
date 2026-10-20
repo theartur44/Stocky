@@ -1,4 +1,4 @@
-# Política de privacidad de Stoky
+# Política de privacidad de Stocky
 
 > **BORRADOR PENDIENTE DE REVISIÓN JURÍDICA.** Refleja el comportamiento de la versión 0.1.0 de la aplicación Android (sin servidor). Debe actualizarse antes de publicar cualquier versión que cambie el tratamiento de datos.
 
@@ -17,9 +17,9 @@
 
 ## 2. Resumen
 
-- Stoky funciona **sin cuenta, sin registro y sin conexión obligatoria**.
+- Stocky funciona **sin cuenta, sin registro y sin conexión obligatoria**.
 - Tu inventario, tus listas de la compra y tus ajustes se guardan **solo en tu dispositivo**. No los recibimos.
-- Stoky **no incluye publicidad, analítica ni rastreadores**.
+- Stocky **no incluye publicidad, analítica ni rastreadores**.
 - Hay **una única comunicación externa** iniciada por la app: si lo permites, al escanear un producto que no está en tu inventario, se consulta su **código de barras** en Open Food Facts.
 - El escáner usa el componente **Google ML Kit**, que procesa la imagen en el dispositivo (ver §5.2).
 
@@ -48,7 +48,7 @@ No se elaboran perfiles, no se toman decisiones automatizadas con efectos juríd
 
 ### 5.1. Open Food Facts (consulta opcional de productos)
 
-- **Qué se envía:** el código de barras del producto, en la dirección de la petición. Como en cualquier conexión a Internet, el servidor recibe también la **dirección IP** del dispositivo y datos técnicos de la conexión (por ejemplo, la identificación de la app «Stoky/versión»).
+- **Qué se envía:** el código de barras del producto, en la dirección de la petición. Como en cualquier conexión a Internet, el servidor recibe también la **dirección IP** del dispositivo y datos técnicos de la conexión (por ejemplo, la identificación de la app «Stocky/versión»).
 - **Qué no se envía:** inventario, listas, nombres que hayas escrito, imágenes, identificadores del dispositivo o cookies.
 - **Cuándo:** solo si has aceptado la consulta (se pregunta la primera vez que escaneas un producto desconocido) y el producto no está ya guardado en tu dispositivo. Puedes desactivarla en **Ajustes → Privacidad**.
 - **Quién lo recibe:** Open Food Facts, base de datos colaborativa gestionada por una asociación sin ánimo de lucro con sede en Francia, según su información pública. El tratamiento que realice de las peticiones (por ejemplo, registros de servidor) se rige por su propia política de privacidad: [ENLACE A LA POLÍTICA DE OPEN FOOD FACTS — verificar].
@@ -75,7 +75,7 @@ El escáner usa la biblioteca de Google ML Kit incluida en la app. El análisis 
 ## 7. Cuánto tiempo se conservan
 
 - Datos locales: hasta que los borres (individualmente o con **Ajustes → Eliminar todos mis datos**) o desinstales la app.
-- Las **copias de seguridad automáticas de Android están desactivadas** para Stoky: los datos no se copian a la nube de Google. Si desinstalas la app, los datos se pierden.
+- Las **copias de seguridad automáticas de Android están desactivadas** para Stocky: los datos no se copian a la nube de Google. Si desinstalas la app, los datos se pierden.
 - Datos recibidos por terceros: según sus políticas. Detalle en `retencion-y-eliminacion.md`.
 
 ## 8. Tus derechos
@@ -90,15 +90,15 @@ Puedes ejercer los derechos de acceso, rectificación, supresión, oposición, l
 
 ## 9. Menores
 
-Stoky no está dirigida específicamente a menores. [REVISAR la edad mínima y la configuración de público objetivo en Google Play. En España, el art. 7 LOPDGDD fija en 14 años la edad para consentir el tratamiento de datos.]
+Stocky no está dirigida específicamente a menores. [REVISAR la edad mínima y la configuración de público objetivo en Google Play. En España, el art. 7 LOPDGDD fija en 14 años la edad para consentir el tratamiento de datos.]
 
 ## 10. Seguridad
 
-Los datos se guardan en el almacenamiento privado de la app, protegido por el aislamiento de aplicaciones de Android y el cifrado del sistema del dispositivo. La base de datos de Stoky **no está cifrada por la propia app** (ver `proteccion-de-datos.md §5`). Recomendamos proteger el dispositivo con bloqueo de pantalla.
+Los datos se guardan en el almacenamiento privado de la app, protegido por el aislamiento de aplicaciones de Android y el cifrado del sistema del dispositivo. La base de datos de Stocky **no está cifrada por la propia app** (ver `proteccion-de-datos.md §5`). Recomendamos proteger el dispositivo con bloqueo de pantalla.
 
 ## 11. Información de salud
 
-Stoky no solicita alergias, intolerancias ni otros datos de salud. Las recetas y avisos son orientativos y **no** constituyen consejo médico ni nutricional.
+Stocky no solicita alergias, intolerancias ni otros datos de salud. Las recetas y avisos son orientativos y **no** constituyen consejo médico ni nutricional.
 
 ## 12. Sincronización futura
 

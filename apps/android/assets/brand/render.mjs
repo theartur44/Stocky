@@ -40,7 +40,7 @@ const svgs = {
   'splash-icon.png': `${BG}<rect x="112" y="112" width="800" height="800" rx="230" fill="url(#bg)"/>${placed(colored(part), 0.7)}`,
 };
 
-const dir = mkdtempSync(join(tmpdir(), 'stoky-icons-'));
+const dir = mkdtempSync(join(tmpdir(), 'stocky-icons-'));
 for (const [name, body] of Object.entries(svgs)) {
   const html = join(dir, `${name}.html`);
   writeFileSync(html, `<!doctype html><html><body style="margin:0;background:transparent">

@@ -61,7 +61,7 @@ A completar antes de implementar el servidor: cuentas (correo, hash de contrase�
 ## 3. Flujo de datos
 
 ```
-[Usuario] ──escribe/escanea──▶ [App Stoky] ──SQLite──▶ [Almacenamiento privado del dispositivo]
+[Usuario] ──escribe/escanea──▶ [App Stocky] ──SQLite──▶ [Almacenamiento privado del dispositivo]
                                    │
                                    ├── cámara ──▶ [ML Kit en el dispositivo] ─(métricas, VERIFICAR)─▶ [Google]
                                    │

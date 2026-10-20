@@ -1,4 +1,4 @@
-# Pruebas de Stoky
+# Pruebas de Stocky
 
 ## 1. Pruebas automatizadas (app)
 
@@ -43,7 +43,7 @@ Y la lista completa de `docs/legal/lista-de-verificacion-legal.md`.
 
 ## 3. APK de pruebas
 
-El flujo `.github/workflows/android-apk.yml` compila un APK en GitHub Actions en cada cambio de `apps/android/` (o manualmente desde *Actions → APK Android (pruebas) → Run workflow*). El artefacto `stoky-apk-<commit>` contiene:
+El flujo `.github/workflows/android-apk.yml` compila un APK en GitHub Actions en cada cambio de `apps/android/` (o manualmente desde *Actions → APK Android (pruebas) → Run workflow*). El artefacto `stocky-apk-<commit>` contiene:
 
 - `app-release.apk`: APK para arm64-v8a, armeabi-v7a y x86_64 (móviles y emuladores).
 - `app-release.apk.sha256`: suma de comprobación.
@@ -87,7 +87,7 @@ Usar un dispositivo o emulador Android 10+ con una development build (`npx expo 
 
 Incluir:
 
-1. Versión de Stoky (Ajustes → Acerca de), modelo de dispositivo y versión de Android.
+1. Versión de Stocky (Ajustes → Acerca de), modelo de dispositivo y versión de Android.
 2. Pasos exactos para reproducirlo **con datos inventados** (p. ej. «producto Prueba, 2 ud., caduca 15/10/2026»).
 3. Resultado esperado y obtenido; captura de pantalla sin información personal.
 4. Si hubo conexión, modo avión o permisos denegados.

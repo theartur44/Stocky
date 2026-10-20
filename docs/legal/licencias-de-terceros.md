@@ -4,7 +4,7 @@
 
 ## 1. Licencia del propio proyecto
 
-**[PENDIENTE DE DECIDIR por el titular]** (por ejemplo, MIT, Apache-2.0 o propietaria). Hasta que se decida, el código no se ofrece bajo ninguna licencia abierta. Se ha eliminado el fichero `LICENSE` de la plantilla de Expo porque pertenecía a la plantilla, no a Stoky.
+**[PENDIENTE DE DECIDIR por el titular]** (por ejemplo, MIT, Apache-2.0 o propietaria). Hasta que se decida, el código no se ofrece bajo ninguna licencia abierta. Se ha eliminado el fichero `LICENSE` de la plantilla de Expo porque pertenecía a la plantilla, no a Stocky.
 
 ## 2. Dependencias directas de la app (producción)
 
@@ -73,13 +73,13 @@ No figuran en npm; se añaden al compilar. [VERIFICAR la lista completa con `./g
 
 ## 5. Datos e imágenes
 
-| Fuente | Uso en Stoky | Licencia | Obligaciones |
+| Fuente | Uso en Stocky | Licencia | Obligaciones |
 |---|---|---|---|
-| Open Food Facts — base de datos | Nombre, marca, categoría y unidad sugeridos al escanear | Open Database License (ODbL) 1.0 | Atribución («Datos de Open Food Facts, ODbL»), compartir igual si se redistribuye la base de datos o una base derivada. Stoky guarda solo los productos que el usuario añade, en su dispositivo. [REVISAR si el uso constituye «base de datos derivada»] |
+| Open Food Facts — base de datos | Nombre, marca, categoría y unidad sugeridos al escanear | Open Database License (ODbL) 1.0 | Atribución («Datos de Open Food Facts, ODbL»), compartir igual si se redistribuye la base de datos o una base derivada. Stocky guarda solo los productos que el usuario añade, en su dispositivo. [REVISAR si el uso constituye «base de datos derivada»] |
 | Open Food Facts — contenidos individuales | Ídem | Database Contents License (DbCL) 1.0 [VERIFICAR] | — |
 | Open Food Facts — imágenes de producto | Miniatura mostrada al dar de alta un producto | Creative Commons Attribution-ShareAlike [VERIFICAR versión] | Atribución. Las imágenes pueden contener marcas registradas de terceros |
-| Recetas incluidas | Base local de recetas | Redactadas para Stoky (licencia del proyecto) | — |
-| Logo e iconos de la app | Diseño propio de Stoky (`apps/android/assets/brand/`) | Licencia del proyecto | — |
+| Recetas incluidas | Base local de recetas | Redactadas para Stocky (licencia del proyecto) | — |
+| Logo e iconos de la app | Diseño propio de Stocky (`apps/android/assets/brand/`) | Licencia del proyecto | — |
 
 La app muestra la atribución «Datos de productos: Open Food Facts (licencia ODbL)» en Ajustes → Acerca de.
 

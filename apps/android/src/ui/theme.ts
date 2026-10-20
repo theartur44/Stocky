@@ -3,7 +3,7 @@ import { Platform, useColorScheme, type ViewStyle } from 'react-native';
 import type { Category } from '../domain/models';
 
 /**
- * Paleta de Stoky: verde «despensa fresca» con acento ámbar (el de la marca).
+ * Paleta de Stocky: verde «despensa fresca» con acento ámbar (el de la marca).
  * Contrastes de texto sobre fondo ≥ 4.5:1 (WCAG AA) en ambos temas.
  */
 export interface Palette {

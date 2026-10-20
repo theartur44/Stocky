@@ -9,7 +9,7 @@ import { t } from '../i18n';
 export function logError(operation: string, e: unknown): void {
   if (!__DEV__) return;
   const kind = isAppError(e) ? `AppError:${e.code}` : (e as { name?: string } | null)?.name ?? typeof e;
-  console.warn(`[stoky] ${operation} failed (${kind})`);
+  console.warn(`[stocky] ${operation} failed (${kind})`);
 }
 
 const NETWORK_KEYS: Record<string, string> = {

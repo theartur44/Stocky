@@ -1,6 +1,6 @@
 # Protección de datos: análisis inicial
 
-> **BORRADOR PENDIENTE DE REVISIÓN POR UN PROFESIONAL DE PROTECCIÓN DE DATOS.** Este documento no declara que Stoky cumpla el RGPD; describe el diseño técnico y las cuestiones abiertas.
+> **BORRADOR PENDIENTE DE REVISIÓN POR UN PROFESIONAL DE PROTECCIÓN DE DATOS.** Este documento no declara que Stocky cumpla el RGPD; describe el diseño técnico y las cuestiones abiertas.
 
 **Última actualización:** [FECHA DE ACTUALIZACIÓN]
 

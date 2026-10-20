@@ -1,10 +1,10 @@
-# Servidor de sincronización de Stoky (FASE FUTURA, no necesario para la app v1).
+# Servidor de sincronización de Stocky (FASE FUTURA, no necesario para la app v1).
 #
 # - PostgreSQL no publica ningún puerto: solo es accesible desde la red interna.
 # - La API escucha solo en 127.0.0.1; exponerla a Internet únicamente detrás de
 #   un proxy inverso con HTTPS (Caddy, Traefik o Nginx).
 # - Los secretos se leen de un fichero .env que NUNCA se versiona (ver .env.example).
-name: stoky
+name: stocky
 
 services:
   api:
@@ -26,8 +26,8 @@ services:
   db:
     image: postgres:17
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-stoky}
-      POSTGRES_USER: ${POSTGRES_USER:-stoky}
+      POSTGRES_DB: ${POSTGRES_DB:-stocky}
+      POSTGRES_USER: ${POSTGRES_USER:-stocky}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
     volumes:
       - db-data:/var/lib/postgresql/data

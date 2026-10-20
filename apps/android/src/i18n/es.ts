@@ -5,7 +5,7 @@
  */
 export const es = {
   common: {
-    appName: 'Stoky',
+    appName: 'Stocky',
     save: 'Guardar',
     cancel: 'Cancelar',
     delete: 'Eliminar',
@@ -66,7 +66,7 @@ export const es = {
     estimated: 'fecha estimada',
   },
   expiryDisclaimer:
-    'Las fechas y avisos son orientativos y dependen de lo que hayas registrado. Stoky no puede saber si un alimento es seguro: sigue las indicaciones del envase y revisa su estado.',
+    'Las fechas y avisos son orientativos y dependen de lo que hayas registrado. Stocky no puede saber si un alimento es seguro: sigue las indicaciones del envase y revisa su estado.',
   home: {
     title: 'Inicio',
     productsInStock: 'Productos en casa',
@@ -254,7 +254,7 @@ export const es = {
     hint: 'Apunta al código de barras del producto',
     permissionTitle: 'Permiso de cámara',
     permissionBody:
-      'Stoky usa la cámara solo para leer códigos de barras en el dispositivo. No se guardan ni envían fotografías.',
+      'Stocky usa la cámara solo para leer códigos de barras en el dispositivo. No se guardan ni envían fotografías.',
     permissionButton: 'Permitir cámara',
     permissionDenied:
       'No hay permiso de cámara. Puedes activarlo en los ajustes de Android o introducir el código a mano.',
@@ -272,7 +272,7 @@ export const es = {
     knownProduct: 'Producto ya registrado',
     consentTitle: 'Consultar Open Food Facts',
     consentBody:
-      'Para identificar el producto, Stoky puede enviar el código de barras (y nada más) a Open Food Facts, una base de datos colaborativa externa. Como en cualquier conexión a Internet, el servicio recibe la dirección IP de tu dispositivo. Tu inventario y tus listas no se envían.\n\nPuedes cambiar esta decisión en Ajustes.',
+      'Para identificar el producto, Stocky puede enviar el código de barras (y nada más) a Open Food Facts, una base de datos colaborativa externa. Como en cualquier conexión a Internet, el servicio recibe la dirección IP de tu dispositivo. Tu inventario y tus listas no se envían.\n\nPuedes cambiar esta decisión en Ajustes.',
     consentAccept: 'Permitir consultas',
     consentDeny: 'No, lo añadiré a mano',
     lookupDisabled: 'Las consultas externas están desactivadas. Añade los datos a mano o actívalas en Ajustes.',
@@ -305,7 +305,7 @@ export const es = {
     title: 'Ajustes',
     notifications: 'Avisos de caducidad',
     notificationsEnabled: 'Activar avisos',
-    notificationsDenied: 'Android no permite notificaciones para Stoky. Actívalas en los ajustes del sistema.',
+    notificationsDenied: 'Android no permite notificaciones para Stocky. Actívalas en los ajustes del sistema.',
     warnDays: 'Avisar con antelación (días)',
     notifyHour: 'Hora del aviso',
     showNames: 'Mostrar nombres de productos en los avisos',
@@ -319,7 +319,7 @@ export const es = {
     maxMinutes: 'Tiempo máximo (min, 0 = sin límite)',
     data: 'Tus datos',
     dataInfo:
-      'Todo se guarda solo en este dispositivo. Stoky no tiene cuentas, publicidad ni analítica. Las copias de seguridad automáticas de Android están desactivadas para esta app, por lo que si la desinstalas se perderán los datos.',
+      'Todo se guarda solo en este dispositivo. Stocky no tiene cuentas, publicidad ni analítica. Las copias de seguridad automáticas de Android están desactivadas para esta app, por lo que si la desinstalas se perderán los datos.',
     deleteAll: 'Eliminar todos mis datos',
     deleteAllTitle: 'Eliminar todos los datos',
     deleteAllMessage:
@@ -337,10 +337,10 @@ export const es = {
     channelDescription: 'Recordatorios de productos próximos a su fecha',
     windowTitle: 'Productos para revisar',
     dayTitle: 'Productos con fecha hoy',
-    genericBody_one: '{count} producto se acerca a su fecha. Abre Stoky para revisarlo.',
-    genericBody_other: '{count} productos se acercan a su fecha. Abre Stoky para revisarlos.',
-    genericDayBody_one: '{count} producto tiene fecha hoy. Abre Stoky para revisarlo.',
-    genericDayBody_other: '{count} productos tienen fecha hoy. Abre Stoky para revisarlos.',
+    genericBody_one: '{count} producto se acerca a su fecha. Abre Stocky para revisarlo.',
+    genericBody_other: '{count} productos se acercan a su fecha. Abre Stocky para revisarlos.',
+    genericDayBody_one: '{count} producto tiene fecha hoy. Abre Stocky para revisarlo.',
+    genericDayBody_other: '{count} productos tienen fecha hoy. Abre Stocky para revisarlos.',
     namesBody: '{names}',
     andMore: '{names} y {count} más',
   },

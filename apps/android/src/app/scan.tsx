@@ -4,7 +4,20 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Easing, FlatList, Linking, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  FlatList,
+  Linking,
+  PanResponder,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isLookupableBarcode, toCanonicalGtin } from '../domain/barcode';
@@ -73,6 +86,10 @@ export default function QuickScanScreen() {
   const queue = useRef<string[]>([]);
   const running = useRef(0);
   const flash = useRef(new Animated.Value(0)).current;
+  /** Altura animada de la bandeja (se puede arrastrar con el dedo). */
+  const sheetAnim = useRef(new Animated.Value(190)).current;
+  const sheetTarget = useRef(190);
+  const dragStart = useRef(0);
   const scanLine = useRef(new Animated.Value(0)).current;
 
   // Línea de escaneo animada.
@@ -306,16 +323,46 @@ export default function QuickScanScreen() {
     void save();
   };
 
-  if (!permission) return <LoadingView />;
-
   const summary = sessionSummary(session);
   const lines = visibleLines(session);
   const manualExtra = manualOpen ? 64 : 0;
-  const sheetHeight = sheetOpen
-    ? height * 0.78
-    : lines.length === 0
-      ? 190 + manualExtra
-      : Math.min(height * 0.5, 230 + manualExtra + lines.length * 84);
+  const collapsedHeight =
+    lines.length === 0 ? 190 + manualExtra : Math.min(height * 0.5, 230 + manualExtra + lines.length * 84);
+  const expandedHeight = height * 0.8;
+  const sheetHeight = sheetOpen ? expandedHeight : collapsedHeight;
+
+  // La bandeja se anima hacia su altura objetivo cuando cambia.
+  useEffect(() => {
+    sheetTarget.current = sheetHeight;
+    Animated.spring(sheetAnim, { toValue: sheetHeight, useNativeDriver: false, speed: 16, bounciness: 4 }).start();
+  }, [sheetHeight, sheetAnim]);
+
+  // Arrastrar el asa o la cabecera hacia arriba/abajo abre o reduce la bandeja.
+  const pan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderGrant: () => {
+        sheetAnim.stopAnimation((v) => {
+          dragStart.current = v;
+        });
+      },
+      onPanResponderMove: (_e, g) => {
+        const h = Math.max(150, Math.min(dragStart.current - g.dy, height * 0.9));
+        sheetAnim.setValue(h);
+      },
+      onPanResponderRelease: (_e, g) => {
+        if (g.dy < -40 || g.vy < -0.5) setSheetOpen(true);
+        else if (g.dy > 40 || g.vy > 0.5) setSheetOpen(false);
+        // Si el estado no cambia, vuelve a su altura.
+        Animated.spring(sheetAnim, { toValue: sheetTarget.current, useNativeDriver: false, speed: 16, bounciness: 4 }).start();
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(sheetAnim, { toValue: sheetTarget.current, useNativeDriver: false }).start();
+      },
+    }),
+  ).current;
+
+  if (!permission) return <LoadingView />;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
@@ -395,13 +442,14 @@ export default function QuickScanScreen() {
       )}
 
       {/* Bandeja inferior */}
-      <View
+      <Animated.View
         style={[
           styles.sheet,
           elevation(colors, 3),
-          { height: sheetHeight, backgroundColor: colors.background, paddingBottom: insets.bottom + spacing.sm },
+          { height: sheetAnim, backgroundColor: colors.background, paddingBottom: insets.bottom + spacing.sm },
         ]}
       >
+        <View {...pan.panHandlers} style={{ gap: spacing.sm }}>
         <PressableScale
           scaleTo={0.99}
           onPress={() => setSheetOpen((v) => !v)}
@@ -428,6 +476,7 @@ export default function QuickScanScreen() {
             </Text>
           </View>
           <IconButton icon="keypad-outline" label={t('scan.manualEntry')} onPress={() => setManualOpen((v) => !v)} filled />
+        </View>
         </View>
 
         {manualOpen ? (
@@ -507,7 +556,7 @@ export default function QuickScanScreen() {
             </PressableScale>
           </View>
         ) : null}
-      </View>
+      </Animated.View>
     </View>
   );
 }

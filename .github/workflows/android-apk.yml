@@ -65,7 +65,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: stoky-apk-${{ github.sha }}
+          name: stocky-apk-${{ github.sha }}
           path: |
             apps/android/android/app/build/outputs/apk/release/app-release.apk
             apps/android/android/app/build/outputs/apk/release/app-release.apk.sha256

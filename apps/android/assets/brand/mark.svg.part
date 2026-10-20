@@ -1,4 +1,4 @@
-<!-- Marca de Stoky: tarro de despensa con niveles de existencias y una hoja. -->
+<!-- Marca de Stocky: tarro de despensa con niveles de existencias y una hoja. -->
 <g id="mark">
   <!-- hoja -->
   <path d="M600 214 C 640 120, 760 96, 812 120 C 806 196, 724 268, 618 262 Z" fill="LEAF"/>

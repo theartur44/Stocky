@@ -2,6 +2,7 @@ import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 import { CONNECTION_PRAGMAS, SerializedDatabase, type RawConnection, type SqlParams } from './sql';
 
+// Nombre histórico del fichero: no se cambia para no perder los datos ya guardados.
 export const DATABASE_NAME = 'stoky.db';
 
 class ExpoConnection implements RawConnection {

@@ -1,4 +1,4 @@
-# Stoky
+# Stocky
 
 Aplicación Android para gestionar el inventario de alimentos de casa: fechas de caducidad, listas de la compra y sugerencias de recetas con lo que tienes. **Funciona sin conexión, sin cuenta y sin rastreadores.**
 
@@ -87,7 +87,7 @@ npx eas-cli@latest build --platform android --profile preview
 
 La carpeta `android/` se genera a partir de `app.json` y los plugins (Continuous Native Generation): no la edites a mano. **Nunca** subas al repositorio el almacén de claves de firma ni sus contraseñas.
 
-Antes de cambiar el identificador `com.stoky.app` de `app.json` por el definitivo del titular, ten en cuenta que no puede cambiarse después de publicar en Google Play.
+El identificador de paquete `com.stoky.app` (escrito con el nombre anterior) es provisional: cambiarlo hace que Android trate la app como otra distinta (la versión instalada no se actualiza y sus datos no se trasladan). Debe fijarse el definitivo antes de publicar en Google Play, porque después no puede cambiarse.
 
 ## Privacidad
 
