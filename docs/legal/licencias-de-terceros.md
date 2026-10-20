@@ -79,7 +79,8 @@ No figuran en npm; se añaden al compilar. [VERIFICAR la lista completa con `./g
 | Open Food Facts — contenidos individuales | Ídem | Database Contents License (DbCL) 1.0 [VERIFICAR] | — |
 | Open Food Facts — imágenes de producto | Miniatura mostrada al dar de alta un producto | Creative Commons Attribution-ShareAlike [VERIFICAR versión] | Atribución. Las imágenes pueden contener marcas registradas de terceros |
 | Recetas incluidas | Base local de recetas | Redactadas para Stocky (licencia del proyecto) | — |
-| Logo e iconos de la app | Diseño propio de Stocky (`apps/android/assets/brand/`) | Licencia del proyecto | — |
+| Logo e iconos de la app | Diseño aportado por el titular, redibujado en vectorial (`apps/android/assets/brand/`) | Licencia del proyecto [CONFIRMAR la autoría y los derechos del diseño original, especialmente si se generó con una herramienta de IA o un tercero] | — |
+| Tipografía Nunito Black (texto del logo) | `apps/android/assets/brand/fonts/` | SIL Open Font License 1.1 (`OFL.txt`) | Conservar el fichero de licencia; solo se usa para generar las imágenes del logo |
 
 La app muestra la atribución «Datos de productos: Open Food Facts (licencia ODbL)» en Ajustes → Acerca de.
 

@@ -175,7 +175,7 @@ Se mantiene `apps/android` como nombre por petición, aunque el código Expo es 
 
 ### Etapa 9 (2026-10-13): rediseño visual y escaneo rápido
 
-- Logo propio (tarro con niveles de existencias y hoja) generado desde `apps/android/assets/brand/` (`node assets/brand/render.mjs <ruta-a-chrome>`). Vista previa: `docs/logo-preview.png`.
+- Logo (2026-10-20): casa con lista de la compra, manzana, botella, tarro y verduras, y el nombre «Stocky» con una hoja en la «o» (diseño aportado por el titular, redibujado en vectorial). Se genera desde `apps/android/assets/brand/` (`node assets/brand/render.mjs <ruta-a-chrome>`); tipografía Nunito Black (OFL). El icono adaptativo usa solo la casa (Android ya muestra el nombre debajo) y la pantalla de carga usa una insignia circular que cabe en el recorte de Android 12+. Vista previa: `docs/logo-preview.png`.
 - Pantalla de carga nativa con el logo (`expo-splash-screen`) que se oculta con fundido al terminar de abrir la base de datos.
 - Tema renovado: tarjetas con sombra, degradados de marca, animación al pulsar, avatares por categoría, avisos emergentes.
 - Barra inferior con botón central de escanear.
