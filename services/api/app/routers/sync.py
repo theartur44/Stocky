@@ -121,8 +121,9 @@ def pull(
     db: Session = Depends(get_db),
 ) -> PullResponse:
     h = ctx.household
-    if since < h.purged_rev:
-        # Hay lápidas purgadas posteriores a `since`: el cliente debe resincronizar todo.
+    if 0 < since < h.purged_rev:
+        # Hay lápidas purgadas posteriores a `since`: el cliente debe resincronizar todo
+        # (una descarga completa, `since=0`, siempre se permite).
         raise HTTPException(status.HTTP_410_GONE, detail="full_resync_required")
     rows = db.scalars(
         select(SyncRecord)

@@ -90,7 +90,90 @@ export const MIGRATIONS: Migration[] = [
          CHECK (pack_quantity_milli IS NULL OR pack_quantity_milli > 0)`,
     ],
   },
+  {
+    version: 3,
+    description: 'Sincronización opcional con un servidor: estado, cola de cambios y triggers',
+    statements: [
+      `CREATE TABLE sync_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0,1)),
+        applying INTEGER NOT NULL DEFAULT 0 CHECK (applying IN (0,1)),
+        server_url TEXT,
+        account_email TEXT,
+        household_id TEXT,
+        household_name TEXT,
+        role TEXT,
+        last_rev INTEGER NOT NULL DEFAULT 0 CHECK (last_rev >= 0),
+        last_sync_at TEXT,
+        last_error TEXT
+      )`,
+      `INSERT INTO sync_state (id) VALUES (1)`,
+      // Cambios locales pendientes de enviar. La rellenan los triggers, así
+      // ningún servicio tiene que acordarse de registrar sus cambios.
+      `CREATE TABLE sync_outbox (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity TEXT NOT NULL CHECK (entity IN ('product','stock_lot','shopping_list','shopping_item')),
+        entity_id TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('upsert','delete','adjust')),
+        delta_milli INTEGER
+      )`,
+      `CREATE INDEX idx_sync_outbox_entity ON sync_outbox(entity, entity_id)`,
+      // Lote preparado para enviar, con su op_id fijo: si se corta la red se
+      // reenvía idéntico y el servidor lo reconoce como duplicado.
+      `CREATE TABLE sync_pending (
+        op_id TEXT PRIMARY KEY NOT NULL,
+        seq INTEGER NOT NULL,
+        entity TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('upsert','delete','adjust_quantity')),
+        data TEXT,
+        delta_milli INTEGER
+      )`,
+      ...syncTriggers(),
+    ],
+  },
 ];
+
+/** Triggers que anotan en `sync_outbox` cada cambio local (solo con la sincronización activada). */
+function syncTriggers(): string[] {
+  const active = `(SELECT enabled = 1 AND applying = 0 FROM sync_state WHERE id = 1)`;
+  const tables: [table: string, entity: string][] = [
+    ['products', 'product'],
+    ['shopping_lists', 'shopping_list'],
+    ['shopping_items', 'shopping_item'],
+    ['stock_lots', 'stock_lot'],
+  ];
+  const out: string[] = [];
+  for (const [table, entity] of tables) {
+    out.push(
+      `CREATE TRIGGER sync_${table}_insert AFTER INSERT ON ${table} WHEN ${active}
+       BEGIN INSERT INTO sync_outbox (entity, entity_id, kind) VALUES ('${entity}', NEW.id, 'upsert'); END`,
+      `CREATE TRIGGER sync_${table}_delete AFTER DELETE ON ${table} WHEN ${active}
+       BEGIN INSERT INTO sync_outbox (entity, entity_id, kind) VALUES ('${entity}', OLD.id, 'delete'); END`,
+    );
+  }
+  for (const [table, entity] of tables.slice(0, 3)) {
+    out.push(
+      `CREATE TRIGGER sync_${table}_update AFTER UPDATE ON ${table} WHEN ${active}
+       BEGIN INSERT INTO sync_outbox (entity, entity_id, kind) VALUES ('${entity}', NEW.id, 'upsert'); END`,
+    );
+  }
+  // Lotes: si solo cambia la cantidad se envía la diferencia (delta), que se
+  // suma en el servidor sin pisar lo que haya consumido otro móvil a la vez.
+  const sameLot = ['product_id', 'unit', 'location', 'added_on', 'expiry_date', 'expiry_kind', 'expiry_estimated', 'lot_code', 'notes']
+    .map((c) => `NEW.${c} IS OLD.${c}`)
+    .join(' AND ');
+  out.push(
+    `CREATE TRIGGER sync_stock_lots_adjust AFTER UPDATE ON stock_lots
+       WHEN ${active} AND NEW.quantity_milli <> OLD.quantity_milli AND ${sameLot}
+     BEGIN INSERT INTO sync_outbox (entity, entity_id, kind, delta_milli)
+       VALUES ('stock_lot', NEW.id, 'adjust', NEW.quantity_milli - OLD.quantity_milli); END`,
+    `CREATE TRIGGER sync_stock_lots_update AFTER UPDATE ON stock_lots
+       WHEN ${active} AND NOT (${sameLot})
+     BEGIN INSERT INTO sync_outbox (entity, entity_id, kind) VALUES ('stock_lot', NEW.id, 'upsert'); END`,
+  );
+  return out;
+}
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version;
 

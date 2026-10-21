@@ -474,8 +474,14 @@ export const settingsRepo = {
 
 /** Borra todos los datos de usuario (no el esquema). */
 export async function deleteAllUserData(db: SqlExecutor): Promise<void> {
+  // Primero se desconecta la sincronización: borrar los datos de este móvil no
+  // debe borrarlos también del hogar compartido en el servidor.
   await db.exec(
-    `DELETE FROM shopping_items;
+    `UPDATE sync_state SET enabled = 0, applying = 0, server_url = NULL, account_email = NULL, household_id = NULL,
+       household_name = NULL, role = NULL, last_rev = 0, last_sync_at = NULL, last_error = NULL WHERE id = 1;
+     DELETE FROM sync_outbox;
+     DELETE FROM sync_pending;
+     DELETE FROM shopping_items;
      DELETE FROM shopping_lists;
      DELETE FROM stock_lots;
      DELETE FROM products;

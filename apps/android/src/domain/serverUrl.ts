@@ -1,22 +1,29 @@
 /**
- * Validación de la dirección del servidor de sincronización (fase futura).
+ * Dirección del servidor de sincronización.
+ *
+ * El usuario puede escribir un dominio («stocky.midominio.com») o una IP de su
+ * red («192.168.1.50»), con o sin `http(s)://` y puerto.
  *
  * Reglas:
- *  - Solo `https://` en producción.
- *  - `http://` solo en desarrollo y hacia `localhost` o direcciones privadas.
+ *  - Dominios y direcciones públicas: solo `https://` (cifrado obligatorio).
+ *  - `http://` únicamente hacia la red local (localhost, 10.x, 172.16-31.x,
+ *    192.168.x, *.local): el tráfico no sale de casa, pero la app avisa de que
+ *    va sin cifrar.
  *  - Sin usuario/contraseña en la URL, sin parámetros ni fragmentos.
  * Se usa un análisis propio y estricto porque la implementación de `URL` en
  * React Native es parcial.
  */
 export type ServerUrlError = 'empty' | 'malformed' | 'insecure' | 'credentials' | 'query';
 
-export type ServerUrlResult = { ok: true; url: string } | { ok: false; error: ServerUrlError };
+export type ServerUrlResult =
+  | { ok: true; url: string; /** Conexión sin cifrar dentro de la red local. */ lan: boolean }
+  | { ok: false; error: ServerUrlError };
 
 const URL_RE = /^(https?):\/\/([^/?#]*)(\/[^?#]*)?([?#].*)?$/i;
 const HOST_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
 const IPV4_RE = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 
-function isPrivateHost(host: string): boolean {
+export function isPrivateHost(host: string): boolean {
   if (host === 'localhost' || host.endsWith('.local')) return true;
   const m = IPV4_RE.exec(host);
   if (!m) return false;
@@ -24,7 +31,7 @@ function isPrivateHost(host: string): boolean {
   return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31);
 }
 
-export function validateServerUrl(input: string, opts: { production: boolean }): ServerUrlResult {
+export function validateServerUrl(input: string): ServerUrlResult {
   const raw = input.trim();
   if (!raw) return { ok: false, error: 'empty' };
   const m = URL_RE.exec(raw);
@@ -45,7 +52,19 @@ export function validateServerUrl(input: string, opts: { production: boolean }):
     return { ok: false, error: 'malformed' };
   }
 
-  if (scheme === 'http' && (opts.production || !isPrivateHost(host))) return { ok: false, error: 'insecure' };
+  if (scheme === 'http' && !isPrivateHost(host)) return { ok: false, error: 'insecure' };
 
-  return { ok: true, url: `${scheme}://${host}${port !== null ? `:${port}` : ''}${path}` };
+  return { ok: true, url: `${scheme}://${host}${port !== null ? `:${port}` : ''}${path}`, lan: scheme === 'http' };
+}
+
+/**
+ * Acepta lo que escribe el usuario: si falta el esquema, usa `http://` para
+ * direcciones de la red local y `https://` para todo lo demás.
+ */
+export function normalizeServerAddress(input: string): ServerUrlResult {
+  const raw = input.trim();
+  if (!raw) return { ok: false, error: 'empty' };
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) return validateServerUrl(raw);
+  const host = raw.split(/[:/]/)[0]!.toLowerCase();
+  return validateServerUrl(`${isPrivateHost(host) ? 'http' : 'https'}://${raw}`);
 }

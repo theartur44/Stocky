@@ -9,7 +9,16 @@ describe('migraciones de SQLite', () => {
     const tables = await db.all<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
     );
-    expect(tables.map((t) => t.name)).toEqual(['products', 'settings', 'shopping_items', 'shopping_lists', 'stock_lots']);
+    expect(tables.map((t) => t.name)).toEqual([
+      'products',
+      'settings',
+      'shopping_items',
+      'shopping_lists',
+      'stock_lots',
+      'sync_outbox',
+      'sync_pending',
+      'sync_state',
+    ]);
   });
 
   it('es idempotente al ejecutarse varias veces', async () => {

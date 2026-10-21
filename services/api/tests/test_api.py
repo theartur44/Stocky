@@ -242,7 +242,11 @@ def test_delete_creates_tombstone_and_purge(api, app):
         db.execute(update(SyncRecord).values(updated_at=datetime.now(UTC) - timedelta(days=100)))
         db.commit()
         assert purge_db(db, datetime.now(UTC))[3] == 1
-    assert owner.get("/sync/pull", params={"since": 0}).status_code == 410
+    # Quien se quedó entre medias debe resincronizar todo…
+    assert owner.get("/sync/pull", params={"since": 1}).status_code == 410
+    # …y la descarga completa (p. ej. un móvil que acaba de unirse) siempre funciona.
+    full = owner.get("/sync/pull", params={"since": 0})
+    assert full.status_code == 200 and full.json()["changes"] == []
     assert owner.get("/sync/pull", params={"since": 2}).status_code == 200
 
 
