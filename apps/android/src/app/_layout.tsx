@@ -49,7 +49,10 @@ export default function RootLayout() {
               headerStyle: { backgroundColor: colors.background },
               headerShadowVisible: false,
               contentStyle: { backgroundColor: colors.background },
-              animation: 'slide_from_right',
+              // Transición tipo iOS en Android: la pantalla nueva entra deslizando y la anterior
+              // se desplaza un poco (parallax), más suave que el deslizamiento estándar.
+              animation: 'ios_from_right',
+              gestureEnabled: true,
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

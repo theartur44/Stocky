@@ -1,16 +1,40 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs, router } from 'expo-router';
-import { StyleSheet, View, type ColorValue } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { t } from '../../i18n';
 import { IconButton, PressableScale, type IconName } from '../../ui/components';
 import { elevation, useTheme } from '../../ui/theme';
 
+/** Icono de pestaña: al activarse crece con un muelle y aparece una «píldora» detrás. */
+function AnimatedTabIcon({ name, color, focused }: { name: IconName; color: ColorValue; focused: boolean }) {
+  const { colors } = useTheme();
+  const v = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.spring(v, { toValue: focused ? 1 : 0, useNativeDriver: true, speed: 14, bounciness: 9 }).start();
+  }, [focused, v]);
+  return (
+    <View style={styles.iconSlot}>
+      <Animated.View
+        style={[
+          styles.pill,
+          { backgroundColor: colors.primarySoft, opacity: v, transform: [{ scaleX: v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] },
+        ]}
+      />
+      <Animated.View style={{ transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] }) }] }}>
+        <Ionicons name={name} size={24} color={color} />
+      </Animated.View>
+    </View>
+  );
+}
+
 function tabIcon(active: IconName, inactive: IconName) {
-  return ({ color, size, focused }: { color: ColorValue; size: number; focused: boolean }) => (
-    <Ionicons name={focused ? active : inactive} size={size} color={color} />
+  return ({ color, focused }: { color: ColorValue; size: number; focused: boolean }) => (
+    <AnimatedTabIcon name={focused ? active : inactive} color={color} focused={focused} />
   );
 }
 
@@ -43,7 +67,14 @@ export default function TabsLayout() {
   );
   return (
     <Tabs
+      screenListeners={{
+        tabPress: () => {
+          Haptics.selectionAsync().catch(() => undefined);
+        },
+      }}
       screenOptions={{
+        // Transición suave entre pestañas: desplazamiento corto con fundido.
+        animation: 'shift',
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
@@ -78,6 +109,8 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   scanSlot: { flex: 1, alignItems: 'center' },
+  iconSlot: { width: 60, height: 30, alignItems: 'center', justifyContent: 'center' },
+  pill: { position: 'absolute', width: 60, height: 30, borderRadius: 15 },
   scanButton: { width: 66, height: 66, borderRadius: 33, marginTop: -26, borderWidth: 4 },
   scanInner: { flex: 1, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
 });

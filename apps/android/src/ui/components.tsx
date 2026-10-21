@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, type ComponentProps, type ReactNode } from 'react';
 import {
@@ -32,31 +33,60 @@ export type IconName = ComponentProps<typeof Ionicons>['name'];
 export function PressableScale({
   style,
   children,
-  scaleTo = 0.96,
+  scaleTo = 0.95,
+  haptic = true,
   ...props
 }: Omit<PressableProps, 'style' | 'children'> & {
   style?: StyleProp<ViewStyle>;
   children?: ReactNode;
   scaleTo?: number;
+  /** Vibración muy breve al pulsar (confirma el toque sin mirar). */
+  haptic?: boolean;
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const to = (v: number) => Animated.spring(scale, { toValue: v, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  // 0 = reposo, 1 = pulsado. Escala y opacidad se derivan del mismo valor.
+  const pressed = useRef(new Animated.Value(0)).current;
+  const scale = pressed.interpolate({ inputRange: [0, 1], outputRange: [1, scaleTo] });
+  const opacity = pressed.interpolate({ inputRange: [0, 1], outputRange: [1, 0.82] });
+  const to = (v: number) =>
+    Animated.spring(pressed, {
+      toValue: v,
+      useNativeDriver: true,
+      // Muelle suave: entra rápido y vuelve con un pequeño rebote.
+      ...(v === 1 ? { speed: 50, bounciness: 0 } : { speed: 14, bounciness: 10 }),
+    }).start();
+  // Las propiedades de posición y tamaño van al contenedor pulsable para que el
+  // elemento ocupe su sitio en filas y rejillas (p. ej. `flex: 1`); el resto, a la vista animada.
+  const flat = StyleSheet.flatten(style) ?? {};
+  const outer: ViewStyle = {};
+  const inner: ViewStyle = {};
+  for (const [k, v] of Object.entries(flat)) {
+    (OUTER_KEYS.has(k) ? outer : inner)[k as keyof ViewStyle] = v as never;
+  }
+  if (outer.flex !== undefined || outer.flexGrow !== undefined || outer.alignSelf === 'stretch') inner.flexGrow = 1;
   return (
     <Pressable
       {...props}
+      style={outer}
       onPressIn={(e) => {
-        to(scaleTo);
+        to(1);
+        if (haptic && !props.disabled) Haptics.selectionAsync().catch(() => undefined);
         props.onPressIn?.(e);
       }}
       onPressOut={(e) => {
-        to(1);
+        to(0);
         props.onPressOut?.(e);
       }}
     >
-      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
+      <Animated.View style={[inner, { opacity, transform: [{ scale }] }]}>{children}</Animated.View>
     </Pressable>
   );
 }
+
+const OUTER_KEYS = new Set([
+  'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf', 'width', 'minWidth', 'maxWidth',
+  'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 'marginHorizontal', 'marginVertical',
+  'position', 'top', 'bottom', 'left', 'right', 'zIndex',
+]);
 
 /** Aparición suave (opacidad y desplazamiento) al montar. */
 export function FadeIn({ children, delay = 0, style }: { children: ReactNode; delay?: number; style?: StyleProp<ViewStyle> }) {
@@ -499,7 +529,7 @@ export function ListRow({
           <Ionicons name={icon} size={20} color={colors.primary} />
         </View>
       ) : null}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: colors.text, fontSize: font.body, fontWeight: '600' }} numberOfLines={2}>
           {title}
         </Text>
@@ -509,7 +539,7 @@ export function ListRow({
           </Text>
         ) : null}
       </View>
-      {right}
+      {right ? <View style={styles.rowRight}>{right}</View> : null}
     </>
   );
   if (!onPress) return <View style={styles.row}>{content}</View>;
@@ -539,7 +569,9 @@ export function Badge({ label, tone = 'neutral', icon }: { label: string; tone?:
   return (
     <View style={[styles.badge, { backgroundColor: map[tone].bg }]}>
       {icon ? <Ionicons name={icon} size={13} color={map[tone].fg} /> : null}
-      <Text style={{ color: map[tone].fg, fontSize: 12, fontWeight: '700' }}>{label}</Text>
+      <Text style={{ color: map[tone].fg, fontSize: 12, fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -653,6 +685,7 @@ export const styles = StyleSheet.create({
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 52 },
   stepper: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.pill },
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingVertical: spacing.sm, gap: spacing.md },
+  rowRight: { maxWidth: '48%', flexShrink: 1, alignItems: 'flex-end' },
   rowIcon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   badge: {
     flexDirection: 'row',

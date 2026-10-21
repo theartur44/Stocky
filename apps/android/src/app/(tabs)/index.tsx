@@ -38,7 +38,7 @@ function greeting(now: Date): string {
 
 export default function HomeScreen() {
   const { services, settings } = useApp();
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const q = useServiceQuery(
@@ -56,7 +56,8 @@ export default function HomeScreen() {
   const { dashboard, pending, listId } = q.data;
   const now = new Date();
   const today = toLocalDate(now);
-  const dateText = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const longDate = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateText = longDate.charAt(0).toUpperCase() + longDate.slice(1);
 
   const addToList = async (product: Product) => {
     const name = product.name;
@@ -94,14 +95,16 @@ export default function HomeScreen() {
           accessibilityLabel={t('home.scanCta')}
           accessibilityHint={t('home.scanCtaHint')}
           onPress={() => router.push('/scan')}
-          style={styles.cta}
+          style={[styles.cta, { backgroundColor: colors.surface }]}
         >
           <View style={[styles.ctaIcon, { backgroundColor: colors.primarySoft }]}>
             <Ionicons name="barcode-outline" size={26} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.primaryStrong, fontWeight: '800', fontSize: font.large }}>{t('home.scanCta')}</Text>
-            <Text style={{ color: '#4F5C52', fontSize: font.small }}>{t('home.scanCtaHint')}</Text>
+            <Text style={{ color: dark ? colors.primary : colors.primaryStrong, fontWeight: '800', fontSize: font.large }}>
+              {t('home.scanCta')}
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: font.small }}>{t('home.scanCtaHint')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={22} color={colors.primary} />
         </PressableScale>
@@ -110,7 +113,7 @@ export default function HomeScreen() {
       <View style={styles.body}>
         <View style={styles.quickGrid}>
           <QuickAction icon="create-outline" label={t('home.addProduct')} onPress={() => router.push('/product/new')} />
-          <QuickAction icon="calendar-outline" label={t('home.expiringAll')} onPress={() => router.push('/expiring')} />
+          <QuickAction icon="calendar-outline" label={t('home.quickExpiry')} onPress={() => router.push('/expiring')} />
           <QuickAction icon="restaurant-outline" label={t('home.recipes')} onPress={() => router.push('/recipes')} />
           <QuickAction icon="cart-outline" label={t('tabs.shopping')} onPress={() => router.push('/shopping')} />
         </View>
@@ -197,7 +200,12 @@ function QuickAction({ icon, label, onPress }: { icon: IconName; label: string; 
       <View style={[styles.quickIcon, { backgroundColor: colors.primarySoft }]}>
         <Ionicons name={icon} size={22} color={colors.primary} />
       </View>
-      <Text style={{ color: colors.text, fontSize: font.small, fontWeight: '600', textAlign: 'center' }} numberOfLines={2}>
+      <Text
+        style={{ color: colors.text, fontSize: 12, fontWeight: '600', textAlign: 'center' }}
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+      >
         {label}
       </Text>
     </PressableScale>
@@ -207,7 +215,7 @@ function QuickAction({ icon, label, onPress }: { icon: IconName; label: string; 
 const styles = StyleSheet.create({
   hero: { borderTopLeftRadius: 0, borderTopRightRadius: 0, paddingBottom: spacing.xl, gap: spacing.lg },
   heroTop: { flexDirection: 'row', alignItems: 'center' },
-  heroDate: { color: 'rgba(255,255,255,0.85)', fontSize: font.small, textTransform: 'capitalize', fontWeight: '600' },
+  heroDate: { color: 'rgba(255,255,255,0.85)', fontSize: font.small, fontWeight: '600' },
   heroTitle: { color: '#FFFFFF', fontSize: font.display - 4, fontWeight: '800', letterSpacing: -0.5 },
   heroIcon: {
     width: 44,
@@ -225,7 +233,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    backgroundColor: '#FFFFFF',
     borderRadius: radius.lg,
     padding: spacing.md,
   },

@@ -62,7 +62,7 @@ export const es = {
     soon_other: 'Vence en {count} días',
     today: 'Vence hoy',
     expired: 'Caducado el {date}',
-    best_before_passed: 'Consumo preferente superado ({date})',
+    best_before_passed: 'Consumo pref. superado',
     estimated: 'fecha estimada',
   },
   expiryDisclaimer:
@@ -83,6 +83,7 @@ export const es = {
     addProduct: 'Añadir producto',
     recipes: 'Ver recetas',
     expiringAll: 'Caducidades',
+    quickExpiry: 'Caducidad',
     settings: 'Ajustes',
     greetingMorning: 'Buenos días',
     greetingAfternoon: 'Buenas tardes',
