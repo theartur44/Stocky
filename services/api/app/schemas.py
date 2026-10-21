@@ -6,7 +6,9 @@ import re
 import uuid
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from .security import password_problem
 
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,63}$")
 
@@ -42,6 +44,13 @@ class RegisterRequest(Credentials):
     password: str = Field(min_length=12, max_length=128)
     registration_code: str | None = Field(default=None, max_length=64)
 
+    @model_validator(mode="after")
+    def _strong_password(self) -> RegisterRequest:
+        problem = password_problem(self.password, self.email)
+        if problem:
+            raise ValueError(f"weak password: {problem}")
+        return self
+
 
 class TokenPair(BaseModel):
     access_token: str
@@ -59,9 +68,56 @@ class ChangePasswordRequest(Strict):
     current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=12, max_length=128)
 
+    @field_validator("new_password")
+    @classmethod
+    def _strong_password(cls, v: str) -> str:
+        problem = password_problem(v)
+        if problem:
+            raise ValueError(f"weak password: {problem}")
+        return v
+
+
+class MfaChallenge(BaseModel):
+    """Respuesta del login cuando la cuenta tiene verificación en dos pasos."""
+
+    mfa_required: Literal[True] = True
+    mfa_token: str
+
+
+class MfaLoginRequest(Strict):
+    mfa_token: str = Field(min_length=20, max_length=1000)
+    #: Código de 6 cifras de la app autenticadora o un código de recuperación.
+    code: str = Field(min_length=6, max_length=20)
+    device_name: str = Field(default="Dispositivo", min_length=1, max_length=60)
+
+    @field_validator("device_name")
+    @classmethod
+    def _device(cls, v: str) -> str:
+        return _clean_text(v) or "Dispositivo"
+
+
+class MfaSetupOut(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class MfaCodeRequest(Strict):
+    code: str = Field(min_length=6, max_length=20)
+
+
+class MfaDisableRequest(Strict):
+    password: str = Field(min_length=1, max_length=128)
+    code: str = Field(min_length=6, max_length=20)
+
+
+class RecoveryCodesOut(BaseModel):
+    recovery_codes: list[str]
+
 
 class DeleteAccountRequest(Strict):
     password: str = Field(min_length=1, max_length=128)
+    #: Obligatorio si la cuenta tiene verificación en dos pasos.
+    code: str | None = Field(default=None, max_length=20)
 
 
 class Me(BaseModel):
@@ -69,6 +125,7 @@ class Me(BaseModel):
     email: str
     household_id: uuid.UUID | None
     role: str | None
+    mfa_enabled: bool = False
 
 
 class DeviceOut(BaseModel):

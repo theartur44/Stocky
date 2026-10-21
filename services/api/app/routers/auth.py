@@ -12,13 +12,19 @@ from sqlalchemy.orm import Session
 
 from ..db import as_utc
 from ..deps import AppState, AuthContext, client_ip, get_auth, get_db, get_state, rate_limit, security_log
-from ..models import DeviceSession, Household, Membership, User
+from ..models import DeviceSession, Household, Membership, RecoveryCode, User
 from ..schemas import (
     ChangePasswordRequest,
     Credentials,
     DeleteAccountRequest,
     DeviceOut,
     Me,
+    MfaChallenge,
+    MfaCodeRequest,
+    MfaDisableRequest,
+    MfaLoginRequest,
+    MfaSetupOut,
+    RecoveryCodesOut,
     RefreshRequest,
     RegisterRequest,
     TokenPair,
@@ -26,12 +32,19 @@ from ..schemas import (
 from ..security import (
     constant_time_equals,
     create_access_token,
+    create_mfa_token,
+    decode_mfa_token,
     email_index,
     hash_password,
     new_opaque_token,
+    new_recovery_codes,
+    new_totp_secret,
+    normalize_code,
     password_needs_rehash,
     token_digest,
+    totp_uri,
     verify_password,
+    verify_totp,
 )
 
 router = APIRouter(tags=["auth"])
@@ -85,13 +98,13 @@ def register(
     return _open_session(state, db, user, body.device_name)
 
 
-@router.post("/auth/login", response_model=TokenPair)
+@router.post("/auth/login", response_model=TokenPair | MfaChallenge)
 def login(
     body: Credentials,
     request: Request,
     state: AppState = Depends(get_state),
     db: Session = Depends(get_db),
-) -> TokenPair:
+) -> TokenPair | MfaChallenge:
     idx = email_index(state.settings, body.email)
     rate_limit(state, f"login-ip:{client_ip(request)}", limit=20, window_seconds=600)
     rate_limit(state, f"login-account:{idx}", limit=8, window_seconds=600)
@@ -102,8 +115,123 @@ def login(
         raise INVALID_CREDENTIALS
     if password_needs_rehash(user.password_hash):
         user.password_hash = hash_password(body.password)
+    if user.totp_enabled_at is not None:
+        # Contraseña correcta, pero falta el segundo paso: aún no se abre sesión.
+        db.commit()
+        security_log.info("login_mfa_required user=%s", user.id)
+        return MfaChallenge(mfa_token=create_mfa_token(state.settings, user.id))
     security_log.info("login_ok user=%s", user.id)
     return _open_session(state, db, user, body.device_name)
+
+
+def _check_second_factor(state: AppState, db: Session, user: User, code: str) -> bool:
+    """Valida un código TOTP (una sola vez) o consume un código de recuperación."""
+    if user.totp_secret_enc is None:
+        return False
+    secret = state.cipher.decrypt_text(user.totp_secret_enc, f"totp:{user.id}")
+    step = verify_totp(secret, code, datetime.now(UTC), user.totp_last_step)
+    if step is not None:
+        user.totp_last_step = step
+        return True
+    rc = db.get(RecoveryCode, (user.id, token_digest(normalize_code(code))))
+    if rc is not None and rc.used_at is None:
+        rc.used_at = datetime.now(UTC)
+        security_log.info("recovery_code_used user=%s", user.id)
+        return True
+    return False
+
+
+@router.post("/auth/login/mfa", response_model=TokenPair)
+def login_mfa(
+    body: MfaLoginRequest,
+    request: Request,
+    state: AppState = Depends(get_state),
+    db: Session = Depends(get_db),
+) -> TokenPair:
+    rate_limit(state, f"mfa-ip:{client_ip(request)}", limit=20, window_seconds=600)
+    user_id = decode_mfa_token(state.settings, body.mfa_token)
+    if user_id is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="mfa_expired")
+    # Pocos intentos por cuenta: 6 cifras no resisten la fuerza bruta sin límite.
+    rate_limit(state, f"mfa-user:{user_id}", limit=5, window_seconds=600)
+    user = db.get(User, user_id)
+    if user is None or user.totp_enabled_at is None or not _check_second_factor(state, db, user, body.code):
+        db.commit()
+        security_log.warning("login_mfa_failed")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid_mfa_code")
+    security_log.info("login_ok user=%s mfa=1", user.id)
+    return _open_session(state, db, user, body.device_name)
+
+
+@router.post("/auth/mfa/setup", response_model=MfaSetupOut)
+def mfa_setup(state: AppState = Depends(get_state), auth: AuthContext = Depends(get_auth), db: Session = Depends(get_db)) -> MfaSetupOut:
+    """Genera un secreto nuevo (pendiente hasta que se confirme con un código)."""
+    if auth.user.totp_enabled_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="mfa_already_enabled")
+    secret = new_totp_secret()
+    auth.user.totp_pending_enc = state.cipher.encrypt_text(secret, f"totp-pending:{auth.user.id}")
+    email = state.cipher.decrypt_text(auth.user.email_enc, f"email:{auth.user.id}")
+    db.commit()
+    return MfaSetupOut(secret=secret, otpauth_uri=totp_uri(secret, email))
+
+
+@router.post("/auth/mfa/enable", response_model=RecoveryCodesOut)
+def mfa_enable(
+    body: MfaCodeRequest,
+    state: AppState = Depends(get_state),
+    auth: AuthContext = Depends(get_auth),
+    db: Session = Depends(get_db),
+) -> RecoveryCodesOut:
+    rate_limit(state, f"mfa-enable:{auth.user.id}", limit=10, window_seconds=600)
+    user = auth.user
+    if user.totp_enabled_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="mfa_already_enabled")
+    if user.totp_pending_enc is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="mfa_not_started")
+    secret = state.cipher.decrypt_text(user.totp_pending_enc, f"totp-pending:{user.id}")
+    step = verify_totp(secret, body.code, datetime.now(UTC), None)
+    if step is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid_mfa_code")
+    now = datetime.now(UTC)
+    user.totp_secret_enc = state.cipher.encrypt_text(secret, f"totp:{user.id}")
+    user.totp_pending_enc = None
+    user.totp_enabled_at = now
+    user.totp_last_step = step
+    codes = new_recovery_codes()
+    db.execute(delete(RecoveryCode).where(RecoveryCode.user_id == user.id))
+    for c in codes:
+        db.add(RecoveryCode(user_id=user.id, code_hash=token_digest(normalize_code(c))))
+    # Las demás sesiones se cierran: a partir de ahora entrar exige el segundo paso.
+    for s in db.scalars(select(DeviceSession).where(DeviceSession.user_id == user.id, DeviceSession.id != auth.session.id)):
+        s.revoked_at = s.revoked_at or now
+    db.commit()
+    security_log.info("mfa_enabled user=%s", user.id)
+    # Los códigos solo se muestran ahora; en la base de datos se guarda su hash.
+    return RecoveryCodesOut(recovery_codes=codes)
+
+
+@router.post("/auth/mfa/disable", status_code=status.HTTP_204_NO_CONTENT)
+def mfa_disable(
+    body: MfaDisableRequest,
+    state: AppState = Depends(get_state),
+    auth: AuthContext = Depends(get_auth),
+    db: Session = Depends(get_db),
+) -> Response:
+    rate_limit(state, f"mfa-disable:{auth.user.id}", limit=5, window_seconds=600)
+    user = auth.user
+    if user.totp_enabled_at is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="mfa_not_enabled")
+    if not verify_password(user.password_hash, body.password) or not _check_second_factor(state, db, user, body.code):
+        db.commit()
+        raise INVALID_CREDENTIALS
+    user.totp_secret_enc = None
+    user.totp_pending_enc = None
+    user.totp_enabled_at = None
+    user.totp_last_step = None
+    db.execute(delete(RecoveryCode).where(RecoveryCode.user_id == user.id))
+    db.commit()
+    security_log.info("mfa_disabled user=%s", user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/auth/refresh", response_model=TokenPair)
@@ -153,6 +281,7 @@ def me(auth: AuthContext = Depends(get_auth), state: AppState = Depends(get_stat
         email=state.cipher.decrypt_text(auth.user.email_enc, f"email:{auth.user.id}"),
         household_id=m.household_id if m else None,
         role=m.role if m else None,
+        mfa_enabled=auth.user.totp_enabled_at is not None,
     )
 
 
@@ -188,6 +317,9 @@ def delete_account(
     rate_limit(state, f"delete-account:{auth.user.id}", limit=5, window_seconds=600)
     if not verify_password(auth.user.password_hash, body.password):
         raise INVALID_CREDENTIALS
+    if auth.user.totp_enabled_at is not None and not (body.code and _check_second_factor(state, db, auth.user, body.code)):
+        db.commit()
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid_mfa_code")
     m = db.scalar(select(Membership).where(Membership.user_id == auth.user.id))
     if m is not None and m.role == "owner":
         owners = db.scalars(select(Membership).where(Membership.household_id == m.household_id, Membership.role == "owner")).all()

@@ -42,6 +42,22 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     password_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    #: Verificación en dos pasos: secreto TOTP cifrado (activo y pendiente de confirmar).
+    totp_secret_enc: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    totp_pending_enc: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    totp_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: Último paso TOTP aceptado: impide reutilizar un código.
+    totp_last_step: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+
+class RecoveryCode(Base):
+    """Códigos de recuperación de la verificación en dos pasos (solo su hash; un solo uso)."""
+
+    __tablename__ = "recovery_codes"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    code_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class DeviceSession(Base):
