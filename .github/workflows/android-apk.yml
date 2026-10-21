@@ -2,12 +2,10 @@ name: APK Android (pruebas)
 
 # Compila un APK instalable para PROBAR la app en un dispositivo.
 # Está firmado con la clave de depuración de la plantilla: no sirve para Google Play.
+# Solo se lanza a mano (Actions → APK Android (pruebas) → Run workflow), para
+# compilar únicamente la última versión y no un APK por cada cambio.
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'apps/android/**'
-      - '.github/workflows/android-apk.yml'
 
 permissions:
   contents: read

@@ -43,7 +43,7 @@ Y la lista completa de `docs/legal/lista-de-verificacion-legal.md`.
 
 ## 3. APK de pruebas
 
-El flujo `.github/workflows/android-apk.yml` compila un APK en GitHub Actions en cada cambio de `apps/android/` (o manualmente desde *Actions → APK Android (pruebas) → Run workflow*). El artefacto `stocky-apk-<commit>` contiene:
+El flujo `.github/workflows/android-apk.yml` compila un APK en GitHub Actions solo cuando se lanza a mano (*Actions → APK Android (pruebas) → Run workflow*), para compilar únicamente la última versión. La CI (tests y tipos) sí se ejecuta en cada cambio. El artefacto `stocky-apk-<commit>` contiene:
 
 - `app-release.apk`: APK para arm64-v8a, armeabi-v7a y x86_64 (móviles y emuladores).
 - `app-release.apk.sha256`: suma de comprobación.
