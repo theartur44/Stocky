@@ -20,6 +20,8 @@ export interface Palette {
   surfaceSolid: string;
   /** Opaca: barras que pasan por encima del texto (barra de pestañas) deben leerse siempre. */
   surfaceBar: string;
+  /** Velo translúcido sobre el desenfoque de la barra de pestañas. */
+  surfaceVeil: string;
   /** Brillo de la esquina superior del cristal (inicio del degradado). */
   glassHighlight: string;
   /** Borde claro del cristal. */
@@ -96,6 +98,7 @@ const lightBase = {
   surfaceAlt: 'rgba(255,255,255,0.72)',
   surfaceSolid: '#FFFFFF',
   surfaceBar: '#F8FAF8',
+  surfaceVeil: 'rgba(250,252,250,0.55)',
   glassHighlight: 'rgba(255,255,255,0.9)',
   glassBorder: 'rgba(255,255,255,0.85)',
   blobOpacity: 0.45,
@@ -119,6 +122,7 @@ const darkBase = {
   surfaceAlt: 'rgba(255,255,255,0.1)',
   surfaceSolid: '#161D19',
   surfaceBar: '#161D19',
+  surfaceVeil: 'rgba(18,24,21,0.55)',
   glassHighlight: 'rgba(255,255,255,0.13)',
   glassBorder: 'rgba(255,255,255,0.14)',
   blobOpacity: 0.42,

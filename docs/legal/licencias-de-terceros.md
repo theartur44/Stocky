@@ -24,6 +24,7 @@
 | expo-splash-screen | 57.0.x | MIT |
 | expo-haptics | 57.0.x | MIT |
 | expo-linear-gradient | 57.0.x | MIT |
+| expo-blur | 57.0.3 | MIT |
 | expo-font | 57.0.4 | MIT |
 | @expo/vector-icons (incluye Ionicons) | 15.1.1 | MIT |
 | react / react-dom | 19.2.3 | MIT |
@@ -69,6 +70,7 @@ No figuran en npm; se añaden al compilar. [VERIFICAR la lista completa con `./g
 | com.google.android.gms:play-services-code-scanner 16.1.0 | expo-camera | Condiciones de Google Play services [VERIFICAR] |
 | androidx.camera (CameraX) | expo-camera | Apache-2.0 |
 | com.google.firebase:firebase-messaging 25.0.1 | expo-notifications | Apache-2.0 (SDK) y condiciones de Firebase si se usa el servicio [la app no usa el servicio] |
+| com.github.Dimezis:BlurView 3.1.0 (desenfoque de la barra de pestañas) | expo-blur | Apache-2.0 |
 | SQLite | expo-sqlite | Dominio público |
 
 ## 5. Datos e imágenes
