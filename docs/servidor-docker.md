@@ -90,6 +90,15 @@ Si usas `sudo` para Docker: `sudo ./stocky.sh`.
 5. Pulsa **Invitar a alguien** y comparte el código de invitación (válido 24 horas y para una sola persona).
 6. En cada móvil más: Configurar → misma dirección → **Crear cuenta** con el código de registro → **Unirme** con su código de invitación. Sus datos se suman a los del hogar; los productos con el mismo código de barras y las listas con el mismo nombre se fusionan.
 
+Seguridad de la cuenta (en la app: Ajustes → Servidor → Mi cuenta y seguridad):
+
+- **Verificación en dos pasos**: además de la contraseña, se pide el código de una app autenticadora (Google Authenticator, Microsoft Authenticator, Aegis…). Al activarla se muestran 10 códigos de recuperación de un solo uso: guárdalos fuera del móvil.
+- **Sesiones abiertas**: lista de móviles con la cuenta abierta; puedes cerrar cualquiera.
+- **Contraseña**: mínimo 12 caracteres; se rechazan las muy comunes y las que contienen el correo.
+- **Huella**: Ajustes → Seguridad → Desbloquear con huella (la comprobación la hace Android; la app no guarda huellas).
+
+Tener acceso a la máquina del servidor no basta para ver los datos desde la app: hace falta una cuenta. Y en la base de datos el inventario va cifrado.
+
 A partir de ahí la app se sincroniza sola: al abrirla, a los pocos segundos de cada cambio y cada minuto mientras está abierta. Sin conexión sigue funcionando y envía los cambios al volver. Los consumos hechos a la vez en dos móviles se suman, no se pisan.
 
 ## Uso diario
@@ -104,6 +113,7 @@ A partir de ahí la app se sincroniza sola: al abrirla, a los pocos segundos de 
 | Actualizar a una versión nueva | `./stocky.sh actualizar` (las migraciones se aplican solas) |
 | Copia de seguridad cifrada | `./stocky.sh copia` |
 | Restablecer la contraseña de alguien | `docker compose exec api python -m app.cli reset-password` |
+| Quitar la verificación en dos pasos a quien perdió el móvil y los códigos (comprueba antes que es esa persona) | `docker compose exec api python -m app.cli reset-mfa` |
 | Limpiar sesiones, invitaciones y borrados antiguos | `docker compose exec api python -m app.cli purge` |
 
 Programa la limpieza una vez por semana con `crontab -e`:

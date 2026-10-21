@@ -1,19 +1,13 @@
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 
 import { normalizeServerAddress } from '../domain/serverUrl';
 import { t } from '../i18n';
-import { es } from '../i18n/es';
 import { ConnectError, useSync } from '../state/SyncProvider';
+import { errorText } from '../state/syncErrors';
 import { Body, Button, Card, ChipGroup, Notice, Screen, TextField, Title } from '../ui/components';
 import { font, spacing, useTheme } from '../ui/theme';
-
-type ErrorKey = keyof typeof es.server.errors;
-
-function errorText(e: unknown): string {
-  const code = e instanceof ConnectError ? e.code : 'internal';
-  return t(`server.errors.${(code in es.server.errors ? code : 'internal') as ErrorKey}`);
-}
 
 function formatTime(iso: string | null): string {
   if (!iso) return t('server.never');
@@ -22,16 +16,23 @@ function formatTime(iso: string | null): string {
 
 export default function ServerScreen() {
   const sync = useSync();
+  const params = useLocalSearchParams<{ mode?: string; welcome?: string }>();
+  const fromWelcome = params.welcome === '1';
+  useEffect(() => {
+    // Desde la bienvenida, al quedar conectado se entra directamente en la app.
+    if (fromWelcome && sync.status.enabled) router.replace('/');
+  }, [fromWelcome, sync.status.enabled]);
   if (sync.status.enabled) return <Connected />;
+  if (sync.mfa) return <MfaStep />;
   if (sync.session) return <ChooseHousehold />;
-  return <ConnectForm />;
+  return <ConnectForm initialRegister={params.mode === 'register'} />;
 }
 
 /** Paso 1: dirección del servidor y cuenta. */
-function ConnectForm() {
+function ConnectForm({ initialRegister }: { initialRegister: boolean }) {
   const sync = useSync();
   const [address, setAddress] = useState('');
-  const [register, setRegister] = useState(false);
+  const [register, setRegister] = useState(initialRegister);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -118,6 +119,59 @@ function ConnectForm() {
           disabled={!address.trim() || !email.trim() || !password}
         />
       </Card>
+    </Screen>
+  );
+}
+
+/** Paso 1b: código de la verificación en dos pasos. */
+function MfaStep() {
+  const sync = useSync();
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await sync.verifyMfa(code);
+    } catch (e) {
+      setError(errorText(e));
+      setCode('');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Screen>
+      <Card>
+        <Title>{t('server.mfaTitle')}</Title>
+        <Body muted>{t('server.mfaIntro')}</Body>
+        <TextField
+          label={t('server.mfaCode')}
+          value={code}
+          onChangeText={setCode}
+          placeholder="123 456"
+          keyboardType="default"
+          autoCapitalize="characters"
+          autoCorrect={false}
+          autoComplete="one-time-code"
+          textContentType="oneTimeCode"
+          maxLength={20}
+          autoFocus
+          icon="keypad-outline"
+        />
+        {error ? <Notice tone="danger" message={error} /> : null}
+        <Button
+          label={t('server.mfaVerify')}
+          icon="shield-checkmark-outline"
+          onPress={() => void submit()}
+          loading={busy}
+          disabled={code.trim().length < 6}
+        />
+      </Card>
+      <Button label={t('common.cancel')} variant="ghost" onPress={sync.cancelMfa} />
     </Screen>
   );
 }
@@ -263,6 +317,7 @@ function Connected() {
       ) : null}
 
       {error ? <Notice tone="danger" message={error} /> : null}
+      <Button label={t('server.account')} icon="person-circle-outline" variant="secondary" onPress={() => router.push('/account')} />
       <Button label={t('server.disconnect')} icon="log-out-outline" variant="danger" onPress={disconnect} />
     </Screen>
   );

@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
 import { THEME_COLORS, THEME_MODES, type ThemeColor } from '../domain/appearance';
 import { t } from '../i18n';
+import { authenticate, canLock } from '../integrations/biometrics';
 import * as notifications from '../integrations/notifications';
 import { useApp } from '../state/AppProvider';
 import { useSync } from '../state/SyncProvider';
@@ -74,6 +75,16 @@ const MINUTES_OPTIONS = [0, 20, 30, 45, 60].map((m) => ({
 export default function SettingsScreen() {
   const { services, settings, syncNotifications } = useApp();
   const sync = useSync();
+  const [lockAvailable, setLockAvailable] = useState(true);
+  useEffect(() => {
+    void canLock().then(setLockAvailable);
+  }, []);
+
+  const toggleBiometric = async (on: boolean) => {
+    // Antes de activarlo se comprueba que funciona, para no quedarse fuera.
+    if (on && !(await authenticate(t('security.confirmEnable')))) return;
+    await update({ biometricLock: on });
+  };
   const [message, setMessage] = useState<{ text: string; tone: 'neutral' | 'warning' | 'danger' } | null>(null);
 
   const update = async (patch: Partial<Settings>) => {
@@ -144,6 +155,17 @@ export default function SettingsScreen() {
           icon="server-outline"
           variant="secondary"
           onPress={() => router.push('/server')}
+        />
+      </Card>
+
+      <Card>
+        <Title>{t('security.title')}</Title>
+        <SwitchRow
+          label={t('security.biometric')}
+          help={lockAvailable ? t('security.biometricHelp') : t('security.biometricUnavailable')}
+          value={settings.biometricLock}
+          disabled={!lockAvailable && !settings.biometricLock}
+          onChange={(v) => void toggleBiometric(v)}
         />
       </Card>
 

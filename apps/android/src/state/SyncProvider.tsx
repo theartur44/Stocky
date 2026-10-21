@@ -1,6 +1,6 @@
 import { randomUUID } from 'expo-crypto';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { normalizeServerAddress, type ServerUrlError } from '../domain/serverUrl';
 import { secureTokenStore } from '../integrations/secureTokens';
@@ -30,17 +30,34 @@ export interface PendingSession {
   email: string;
 }
 
+/** Contraseña correcta; falta el código de la verificación en dos pasos. */
+export interface PendingMfa {
+  serverUrl: string;
+  lan: boolean;
+  token: string;
+}
+
 export class ConnectError extends Error {
   constructor(readonly code: ApiErrorCode | ServerUrlError) {
     super(`connect_error:${code}`);
   }
 }
 
+type ConnectResult = 'connected' | 'needs_household' | 'needs_mfa';
+
 interface SyncContextValue {
   status: SyncStatus;
   session: PendingSession | null;
+  mfa: PendingMfa | null;
+  /** Cliente del servidor conectado (gestión de la cuenta), o null. */
+  api: ApiClient | null;
   /** Comprueba la dirección, inicia sesión (o crea la cuenta) y, si ya hay hogar, empieza a sincronizar. */
-  connect(input: { address: string; email: string; password: string; register: boolean; registrationCode: string }): Promise<'connected' | 'needs_household'>;
+  connect(input: { address: string; email: string; password: string; register: boolean; registrationCode: string }): Promise<ConnectResult>;
+  /** Segundo paso del inicio de sesión. */
+  verifyMfa(code: string): Promise<ConnectResult>;
+  cancelMfa(): void;
+  /** Tras borrar la cuenta en el servidor: deja de sincronizar sin intentar cerrar sesión. */
+  forgetAccount(): Promise<void>;
   createHousehold(name: string): Promise<void>;
   joinHousehold(code: string): Promise<void>;
   invite(): Promise<{ code: string; expiresAt: string }>;
@@ -75,10 +92,18 @@ const POLL_MS = 60_000;
 /** Espera tras un cambio local antes de enviarlo (agrupa cambios seguidos). */
 const DEBOUNCE_MS = 2_000;
 
+/** Nombre con el que aparece este móvil en la lista de sesiones de la cuenta. */
+function deviceName(): string {
+  const c = Platform.constants as { Brand?: string; Model?: string };
+  const name = [c.Brand, c.Model].filter(Boolean).join(' ').trim();
+  return (name || 'Android').slice(0, 60);
+}
+
 export function SyncProvider({ children }: { children: ReactNode }) {
-  const { db, notify, subscribe } = useApp();
+  const { db, notify, subscribe, services } = useApp();
   const [status, setStatus] = useState<SyncStatus>(EMPTY);
   const [session, setSession] = useState<PendingSession | null>(null);
+  const [mfa, setMfa] = useState<PendingMfa | null>(null);
   const clientRef = useRef<{ url: string; api: ApiClient; engine: SyncEngine } | null>(null);
   const selfNotify = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,7 +111,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const clientFor = useCallback(
     (url: string) => {
       if (clientRef.current?.url !== url) {
-        const api = createApiClient({ baseUrl: url, tokens: secureTokenStore });
+        const api = createApiClient({ baseUrl: url, tokens: secureTokenStore, deviceName: deviceName() });
         clientRef.current = { url, api, engine: createSyncEngine({ db, transport: api, newId: randomUUID }) };
       }
       return clientRef.current;
@@ -182,17 +207,35 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     async (url: string, email: string, h: HouseholdInfo) => {
       const { engine } = clientFor(url);
       await engine.enable({ serverUrl: url, email, householdId: h.id, householdName: h.name, role: h.role });
+      await services.settings.update({ welcomeDone: true }).catch(() => undefined);
       setSession(null);
       await refreshStatus();
       await runSync(true);
     },
-    [clientFor, refreshStatus, runSync],
+    [clientFor, refreshStatus, runSync, services],
+  );
+
+  /** Con la sesión ya abierta: si hay hogar se empieza a sincronizar; si no, se pide crear o unirse. */
+  const afterLogin = useCallback(
+    async (url: string, lan: boolean): Promise<ConnectResult> => {
+      const { api } = clientFor(url);
+      const me = await api.me();
+      if (me.householdId) {
+        await startSyncing(url, me.email, await api.currentHousehold());
+        return 'connected';
+      }
+      setSession({ serverUrl: url, lan, email: me.email });
+      return 'needs_household';
+    },
+    [clientFor, startSyncing],
   );
 
   const value = useMemo<SyncContextValue>(
     () => ({
       status,
       session,
+      mfa,
+      api: status.serverUrl ? clientFor(status.serverUrl).api : session ? clientFor(session.serverUrl).api : null,
 
       async connect({ address, email, password, register, registrationCode }) {
         const parsed = normalizeServerAddress(address);
@@ -200,18 +243,40 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         const { api } = clientFor(parsed.url);
         try {
           await api.health();
-          if (register) await api.register(email.trim(), password, registrationCode.trim() || null);
-          else await api.login(email.trim(), password);
-          const me = await api.me();
-          if (me.householdId) {
-            await startSyncing(parsed.url, me.email, await api.currentHousehold());
-            return 'connected';
+          if (register) {
+            await api.register(email.trim(), password, registrationCode.trim() || null);
+          } else {
+            const challenge = await api.login(email.trim(), password);
+            if (challenge) {
+              setMfa({ serverUrl: parsed.url, lan: parsed.lan, token: challenge.mfaToken });
+              return 'needs_mfa';
+            }
           }
-          setSession({ serverUrl: parsed.url, lan: parsed.lan, email: me.email });
-          return 'needs_household';
+          return await afterLogin(parsed.url, parsed.lan);
         } catch (e) {
           throw new ConnectError(e instanceof ApiError ? e.code : 'network');
         }
+      },
+
+      async verifyMfa(code) {
+        if (!mfa) throw new ConnectError('mfa_expired');
+        try {
+          await clientFor(mfa.serverUrl).api.loginMfa(mfa.token, code);
+          setMfa(null);
+          return await afterLogin(mfa.serverUrl, mfa.lan);
+        } catch (e) {
+          if (e instanceof ApiError && e.code === 'mfa_expired') setMfa(null);
+          throw new ConnectError(e instanceof ApiError ? e.code : 'network');
+        }
+      },
+
+      cancelMfa: () => setMfa(null),
+
+      async forgetAccount() {
+        await secureTokenStore.clear();
+        await clientFor(status.serverUrl ?? 'https://localhost').engine.disable();
+        setSession(null);
+        await refreshStatus();
       },
 
       async createHousehold(name) {
@@ -257,7 +322,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setSession(null);
       },
     }),
-    [status, session, clientFor, startSyncing, runSync, refreshStatus],
+    [status, session, mfa, clientFor, afterLogin, runSync, refreshStatus],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

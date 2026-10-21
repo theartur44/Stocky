@@ -107,6 +107,8 @@ La app permite conectar, de forma **opcional y desactivada por defecto**, un ser
 - **Qué se envía al activarlo:** el correo y la contraseña de la cuenta (la contraseña solo para iniciar sesión; el servidor guarda únicamente un resumen Argon2id), el nombre del hogar y el contenido del inventario y de las listas de la compra. Los ajustes del móvil (avisos, tema, consentimientos) **no** se envían.
 - **Cómo se protege:** con un dominio, la conexión va cifrada (HTTPS). Con una dirección de red local la conexión va sin cifrar dentro de esa red y la app lo avisa. En el servidor, el inventario, las listas, los correos y los nombres se guardan cifrados (AES-256-GCM). La sesión se guarda en el almacén seguro de Android.
 - **Quién lo ve:** los miembros del mismo hogar y quien administra el servidor.
+- **Verificación en dos pasos (opcional):** el servidor guarda cifrado el secreto que genera los códigos y solo el resumen (hash) de los códigos de recuperación.
+- **Desbloqueo con huella (opcional):** lo comprueba Android; Stocky no recibe ni guarda la huella ni ningún dato biométrico.
 - **Cómo dejar de usarlo:** Ajustes → Servidor → Desconectar este móvil. Los datos del hogar en el servidor solo los puede borrar su propietario o quien administra el servidor.
 
 ## 13. Cambios en esta política

@@ -90,6 +90,12 @@ Usar un dispositivo o emulador Android 10+ con una development build (`npx expo 
 | S6 | Apagar el servidor | La app sigue funcionando; el error se muestra en Ajustes → Servidor |
 | S7 | Desconectar este móvil | Los datos se quedan en el móvil; los del hogar siguen en el servidor |
 | S8 | Eliminar todos los datos estando conectado | Se desconecta primero; el hogar del servidor no se borra |
+| A1 | Instalación nueva | Pantalla de bienvenida: «Iniciar sesión», «Crear una cuenta», «Continuar como invitado»; como invitado no se vuelve a mostrar |
+| A2 | Mi cuenta → Activar verificación en dos pasos | «Abrir en la app autenticadora» abre Google Authenticator/Aegis; tras el código se muestran 10 códigos de recuperación |
+| A3 | Iniciar sesión en otro móvil con la verificación activada | Pide el código; un código incorrecto o ya usado se rechaza; un código de recuperación funciona una vez |
+| A4 | Mi cuenta → Sesiones abiertas → cerrar otro móvil | Ese móvil deja de sincronizar y pide volver a entrar |
+| A5 | Ajustes → Seguridad → Desbloquear con huella | Pide la huella para activarlo; al reabrir la app o volver tras más de un minuto pide la huella (o el PIN del móvil) |
+| A6 | Huella activada y se quita el bloqueo de pantalla del móvil | La app no deja al usuario fuera |
 
 ## 5. Cómo informar y reproducir errores (sin datos personales)
 

@@ -8,7 +8,7 @@
  *
  *   STOCKY_TEST_SERVER=http://127.0.0.1:8765 STOCKY_TEST_REGISTRATION_CODE=… npx jest server.integration
  */
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { request } from 'node:http';
 
 import { lot, milk, setupServices } from '../test-utils/fixtures';
@@ -22,17 +22,20 @@ const maybe = SERVER ? describe : describe.skip;
 /** `fetch` mínimo sobre node:http (Jest sustituye el `fetch` global por uno simulado). */
 function nodeFetch(url: string, init: RequestInit): Promise<Response> {
   return new Promise((resolve, reject) => {
-    const req = request(url, { method: init.method ?? 'GET', headers: init.headers as Record<string, string> }, (res) => {
+    const body = typeof init.body === 'string' ? init.body : null;
+    const headers = { ...(init.headers as Record<string, string>), ...(body !== null ? { 'Content-Length': String(Buffer.byteLength(body)) } : {}) };
+    const req = request(url, { method: init.method ?? 'GET', headers }, (res) => {
       const chunks: Buffer[] = [];
       res.on('data', (c: Buffer) => chunks.push(c));
       res.on('end', () => {
-        const body = Buffer.concat(chunks).toString('utf8');
+        const text = Buffer.concat(chunks).toString('utf8');
         const status = res.statusCode ?? 0;
-        resolve({ ok: status >= 200 && status < 300, status, json: async () => JSON.parse(body) as unknown } as Response);
+        const resHeaders = { get: (k: string) => (res.headers[k.toLowerCase()] as string | undefined) ?? null };
+        resolve({ ok: status >= 200 && status < 300, status, headers: resHeaders, json: async () => JSON.parse(text) as unknown } as unknown as Response);
       });
     });
     req.on('error', reject);
-    if (typeof init.body === 'string') req.write(init.body);
+    if (body !== null) req.write(body);
     req.end();
   });
 }
@@ -57,7 +60,51 @@ async function phone() {
   return { ...s, api, engine };
 }
 
+/** TOTP (RFC 6238) para simular la app autenticadora. */
+function totp(secretB32: string, offsetSteps = 0): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const ch of secretB32.replace(/=+$/, '')) bits += alphabet.indexOf(ch).toString(2).padStart(5, '0');
+  const key = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)));
+  const step = Math.floor(Date.now() / 1000 / 30) + offsetSteps;
+  const msg = Buffer.alloc(8);
+  msg.writeBigUInt64BE(BigInt(step));
+  const h = createHmac('sha1', key).update(msg).digest();
+  const o = h[h.length - 1]! & 0xf;
+  return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+}
+
 maybe('sincronización con el servidor real', () => {
+  it('verificación en dos pasos: activar, entrar con código y con código de recuperación', async () => {
+    const a = await phone();
+    const password = 'otra-contraseña-larga-9'; // secret-scan: ignore
+    const email = `mfa-${randomUUID().slice(0, 8)}@stocky.test`;
+    await a.api.register(email, password, CODE);
+    const { secret, uri } = await a.api.mfaSetup();
+    expect(uri).toContain('otpauth://totp/');
+    const recovery = await a.api.mfaEnable(totp(secret));
+    expect(recovery).toHaveLength(10);
+    expect((await a.api.me()).mfaEnabled).toBe(true);
+
+    const b = await phone();
+    const challenge = await b.api.login(email, password);
+    expect(challenge).not.toBeNull();
+    await expect(b.api.loginMfa(challenge!.mfaToken, '000000')).rejects.toMatchObject({ code: 'invalid_mfa_code' });
+    // Un código ya usado al activar no sirve: se usa el siguiente paso.
+    await b.api.loginMfa(challenge!.mfaToken, totp(secret, 1));
+    expect((await b.api.me()).email).toBe(email);
+
+    const c = await phone();
+    const again = await c.api.login(email, password);
+    await c.api.loginMfa(again!.mfaToken, recovery[0]!);
+    const devices = await c.api.devices();
+    expect(devices.filter((d) => d.current)).toHaveLength(1);
+
+    await expect(c.api.changePassword('mal', 'nueva-contraseña-larga-7')).rejects.toMatchObject({ code: 'invalid_credentials' });
+    await c.api.mfaDisable(password, recovery[1]!);
+    await c.api.deleteAccount(password, null);
+  }, 30_000);
+
   it('dos móviles comparten inventario y lista a través del servidor', async () => {
     const a = await phone();
     const b = await phone();

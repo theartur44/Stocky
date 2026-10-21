@@ -2,12 +2,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { BlurTargetView, BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Tabs, router, useIsFocused } from 'expo-router';
+import { Redirect, Tabs, router, useIsFocused } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Animated, Platform, StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { t } from '../../i18n';
+import { useApp } from '../../state/AppProvider';
+import { useSync } from '../../state/SyncProvider';
 import { Glass, IconButton, PressableScale, type IconName } from '../../ui/components';
 import { TAB_BAR, elevation, radius, useTheme } from '../../ui/theme';
 
@@ -109,11 +111,15 @@ function ScanTabButton() {
 }
 
 export default function TabsLayout() {
+  const { settings } = useApp();
+  const sync = useSync();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [blurTarget, setBlurTarget] = useState<TargetRef | null>(null);
   const registerTarget = useCallback((ref: TargetRef) => setBlurTarget(ref), []);
   const settingsButton = () => <IconButton icon="settings-outline" label={t('settings.title')} onPress={() => router.push('/settings')} />;
+  // Primera apertura: elegir entre invitado o iniciar sesión.
+  if (!settings.welcomeDone && !sync.status.enabled) return <Redirect href="/welcome" />;
   return (
     <BlurTargetContext.Provider value={registerTarget}>
       <Tabs

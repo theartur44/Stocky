@@ -28,6 +28,10 @@ export interface Settings {
   themeColor: ThemeColor;
   /** Claro, oscuro o según el sistema. */
   themeMode: ThemeMode;
+  /** Ya se ha elegido en la bienvenida entre invitado o iniciar sesión. */
+  welcomeDone: boolean;
+  /** Pedir huella (o el bloqueo del móvil) al abrir la app. */
+  biometricLock: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +45,8 @@ export const DEFAULT_SETTINGS: Settings = {
   recipeMaxMinutes: 0,
   themeColor: 'green',
   themeMode: 'system',
+  welcomeDone: false,
+  biometricLock: false,
 };
 
 type Validator<K extends keyof Settings> = (v: unknown) => v is Settings[K];
@@ -60,6 +66,8 @@ const VALIDATORS: { [K in keyof Settings]: Validator<K> } = {
   recipeMaxMinutes: isInt(0, 600),
   themeColor: isThemeColor,
   themeMode: isThemeMode,
+  welcomeDone: isBool,
+  biometricLock: isBool,
 };
 
 /** Interpreta los valores guardados; los desconocidos o corruptos vuelven al valor por defecto. */

@@ -7,6 +7,7 @@
 | Elemento | Estado |
 |---|---|
 | Cuentas (registro con código, inicio de sesión, renovación rotatoria con detección de reutilización, cierre de sesión, cambio de contraseña, borrado de cuenta) | Implementado y probado |
+| Verificación en dos pasos (TOTP + códigos de recuperación) y política de contraseñas (comunes, repetitivas o con el correo) | Implementado y probado (también desde el cliente de la app contra el servidor real) |
 | Dispositivos (listar, revocar al instante) | Implementado y probado |
 | Hogares (crear, invitaciones de un solo uso, roles owner/member/viewer, expulsar, abandonar, borrar, exportar JSON) | Implementado y probado |
 | Sincronización (push idempotente, pull incremental paginado, conflictos por revisión, deltas de cantidad, lápidas y purga) | Implementado y probado |
@@ -66,13 +67,17 @@ Herramientas: `python -m app.cli reset-password | purge | rotate-keys | generate
 | Método y ruta | Descripción |
 |---|---|
 | `POST /auth/register` | Alta con correo, contraseña (12+) y código de registro. `201` con tokens; errores genéricos (`400 registration_failed`, `403`) |
-| `POST /auth/login` | Devuelve token de acceso + token de refresco ligado a un `device_id` |
+| `POST /auth/login` | Devuelve token de acceso + token de refresco. Si la cuenta tiene verificación en dos pasos devuelve `{mfa_required, mfa_token}` (5 min, solo sirve para el paso siguiente) |
+| `POST /auth/login/mfa` | `{mfa_token, code}`: código TOTP de 6 cifras (una sola vez, ±30 s) o código de recuperación. 5 intentos por cuenta cada 10 min |
+| `POST /auth/mfa/setup` | Genera el secreto TOTP (pendiente) y el enlace `otpauth://` para la app autenticadora |
+| `POST /auth/mfa/enable` | Confirma con un código; activa, cierra las demás sesiones y devuelve 10 códigos de recuperación (solo esa vez; se guarda su hash) |
+| `POST /auth/mfa/disable` | Exige contraseña y código |
 | `POST /auth/refresh` | Rota el token de refresco (el anterior queda invalidado; reutilizarlo revoca la familia) |
 | `POST /auth/logout` | Revoca el token del dispositivo actual |
 | `GET /devices` / `DELETE /devices/{id}` | Ver y revocar dispositivos de la cuenta |
-| — | Recuperación de cuenta: por ahora la hace quien administra el servidor (`python -m app.cli reset-password`), porque el servidor no envía correos |
+| — | Recuperación de cuenta: la hace quien administra el servidor (`python -m app.cli reset-password` / `reset-mfa`), porque el servidor no envía correos |
 | `POST /auth/change-password` | Cambia la contraseña y cierra las demás sesiones |
-| `DELETE /account` | Borra la cuenta (y el hogar si era su único propietario) |
+| `DELETE /account` | Borra la cuenta (y el hogar si era su único propietario). Exige contraseña, y código si hay verificación en dos pasos |
 | `GET /me` | Usuario, hogar y rol |
 
 ### Hogares y miembros

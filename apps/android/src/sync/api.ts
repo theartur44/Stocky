@@ -35,6 +35,11 @@ export type ApiErrorCode =
   | 'forbidden'
   | 'rate_limited'
   | 'full_resync_required'
+  | 'invalid_mfa_code'
+  | 'mfa_expired'
+  | 'mfa_already_enabled'
+  | 'mfa_not_enabled'
+  | 'mfa_not_started'
   | 'server';
 
 export class ApiError extends Error {
@@ -58,6 +63,15 @@ export interface Me {
   email: string;
   householdId: string | null;
   role: string | null;
+  mfaEnabled: boolean;
+}
+
+export interface Device {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastUsedAt: string;
+  current: boolean;
 }
 
 export interface SyncOpIn {
@@ -107,6 +121,12 @@ const DETAIL_CODES: Partial<Record<string, ApiErrorCode>> = {
   no_household: 'no_household',
   forbidden: 'forbidden',
   full_resync_required: 'full_resync_required',
+  invalid_mfa_code: 'invalid_mfa_code',
+  mfa_expired: 'mfa_expired',
+  mfa_already_enabled: 'mfa_already_enabled',
+  mfa_not_enabled: 'mfa_not_enabled',
+  mfa_not_started: 'mfa_not_started',
+  invalid_credentials: 'invalid_credentials',
 };
 
 export function createApiClient(opts: {
@@ -199,7 +219,9 @@ export function createApiClient(opts: {
     const tokens = await opts.tokens.get();
     if (!tokens) throw new ApiError('unauthorized');
     let res = await raw(path, { ...init, token: tokens.accessToken });
-    if (res.status === 401) {
+    // Solo un token caducado o revocado (cabecera WWW-Authenticate) justifica renovar;
+    // un 401 por contraseña o código incorrecto se devuelve tal cual.
+    if (res.status === 401 && res.headers?.get?.('WWW-Authenticate')) {
       // Varias peticiones a la vez comparten una sola renovación (el token de refresco es de un solo uso).
       refreshing ??= refresh().finally(() => {
         refreshing = null;
@@ -240,13 +262,28 @@ export function createApiClient(opts: {
       );
     },
 
-    async login(email: string, password: string): Promise<void> {
+    /**
+     * Inicia sesión. Si la cuenta tiene verificación en dos pasos devuelve el
+     * token intermedio (5 min) para `loginMfa`; si no, guarda la sesión y devuelve null.
+     */
+    async login(email: string, password: string): Promise<{ mfaToken: string } | null> {
+      let r: { access_token: string; refresh_token: string } | { mfa_required: true; mfa_token: string };
       try {
-        await saveTokens(await call('/auth/login', { method: 'POST', body: { email, password, device_name: deviceName } }));
+        r = await call('/auth/login', { method: 'POST', body: { email, password, device_name: deviceName } });
       } catch (e) {
         if (e instanceof ApiError && (e.status === 401 || e.status === 422)) throw new ApiError('invalid_credentials', e.status);
         throw e;
       }
+      if ('mfa_required' in r) return { mfaToken: r.mfa_token };
+      await saveTokens(r);
+      return null;
+    },
+
+    /** Segundo paso: código de la app autenticadora o código de recuperación. */
+    async loginMfa(mfaToken: string, code: string): Promise<void> {
+      await saveTokens(
+        await call('/auth/login/mfa', { method: 'POST', body: { mfa_token: mfaToken, code: code.trim(), device_name: deviceName } }),
+      );
     },
 
     /** Cierra la sesión en el servidor (si se puede) y borra los tokens del móvil. */
@@ -260,8 +297,41 @@ export function createApiClient(opts: {
     },
 
     async me(): Promise<Me> {
-      const m = await authed<{ user_id: string; email: string; household_id: string | null; role: string | null }>('/me');
-      return { userId: m.user_id, email: m.email, householdId: m.household_id, role: m.role };
+      const m = await authed<{ user_id: string; email: string; household_id: string | null; role: string | null; mfa_enabled?: boolean }>('/me');
+      return { userId: m.user_id, email: m.email, householdId: m.household_id, role: m.role, mfaEnabled: !!m.mfa_enabled };
+    },
+
+    async mfaSetup(): Promise<{ secret: string; uri: string }> {
+      const r = await authed<{ secret: string; otpauth_uri: string }>('/auth/mfa/setup', { method: 'POST' });
+      return { secret: r.secret, uri: r.otpauth_uri };
+    },
+
+    /** Confirma la activación con un código; devuelve los códigos de recuperación (solo se ven ahora). */
+    async mfaEnable(code: string): Promise<string[]> {
+      return (await authed<{ recovery_codes: string[] }>('/auth/mfa/enable', { method: 'POST', body: { code: code.trim() } })).recovery_codes;
+    },
+
+    async mfaDisable(password: string, code: string): Promise<void> {
+      await authed('/auth/mfa/disable', { method: 'POST', body: { password, code: code.trim() } });
+    },
+
+    async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+      await authed('/auth/change-password', { method: 'POST', body: { current_password: currentPassword, new_password: newPassword } });
+    },
+
+    async devices(): Promise<Device[]> {
+      const rows = await authed<{ id: string; name: string; created_at: string; last_used_at: string; current: boolean }[]>('/devices');
+      return rows.map((d) => ({ id: d.id, name: d.name, createdAt: d.created_at, lastUsedAt: d.last_used_at, current: d.current }));
+    },
+
+    async revokeDevice(id: string): Promise<void> {
+      await authed(`/devices/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+
+    /** Borra la cuenta en el servidor (y el hogar si era su único propietario). */
+    async deleteAccount(password: string, code: string | null): Promise<void> {
+      await authed('/account', { method: 'DELETE', body: { password, ...(code ? { code: code.trim() } : {}) } });
+      await opts.tokens.clear();
     },
 
     async createHousehold(name: string): Promise<HouseholdInfo> {

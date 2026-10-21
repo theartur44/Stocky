@@ -14,7 +14,8 @@ Aplicación Android para gestionar el inventario de alimentos de casa: fechas de
 - Avisos locales de caducidad agrupados por día, sin nombres de productos por defecto.
 - Sugerencias de recetas calculadas en el dispositivo, priorizando lo que vence antes.
 - Estilo «cristal», seis colores a elegir y modo claro/oscuro/automático; componentes accesibles; textos en español (preparado para catalán e inglés).
-- **Hogar compartido opcional** con tu propio servidor (IP de casa o dominio): cuentas, invitaciones y sincronización automática entre móviles, también sin conexión. Instalación del servidor con Docker en un paso: [docs/servidor-docker.md](docs/servidor-docker.md).
+- Bienvenida al instalar: **invitado** (todo en el móvil) o **iniciar sesión** en tu servidor.
+- **Hogar compartido opcional** con tu propio servidor (IP de casa o dominio): cuentas con **verificación en dos pasos**, invitaciones y sincronización automática entre móviles, también sin conexión. Desbloqueo con **huella** opcional. Instalación del servidor con Docker en un paso: [docs/servidor-docker.md](docs/servidor-docker.md).
 - Borrado completo de datos desde Ajustes.
 
 ## Estructura

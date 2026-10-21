@@ -27,7 +27,11 @@ describe('cliente del servidor', () => {
       const auth = (init.headers as Record<string, string>).Authorization;
       calls.push(`${init.method} ${url.replace('https://s.test/api/v1', '')} ${auth ?? ''}`);
       if (url.endsWith('/auth/refresh')) return json(200, { access_token: 'nuevo', refresh_token: 'r2-yyyyyyyyyyyyyyyyyyyy' }); // secret-scan: ignore (token ficticio de prueba)
-      if (auth === 'Bearer viejo') return json(401, { detail: 'invalid_token' });
+      if (auth === 'Bearer viejo') {
+        const r = json(401, { detail: 'unauthorized' });
+        r.headers.set('WWW-Authenticate', 'Bearer');
+        return r;
+      }
       return json(200, { user_id: 'u', email: 'a@b.es', household_id: null, role: null });
     });
     const api = createApiClient({ baseUrl: 'https://s.test/', tokens, fetch });
@@ -38,7 +42,11 @@ describe('cliente del servidor', () => {
 
   it('si el refresco falla, borra los tokens y pide volver a entrar', async () => {
     const tokens = memoryTokens({ accessToken: 'a', refreshToken: 'r1-xxxxxxxxxxxxxxxxxxxx' }); // secret-scan: ignore (token ficticio de prueba)
-    const fetch = jest.fn(async () => json(401, { detail: 'invalid_refresh_token' }));
+    const fetch = jest.fn(async () => {
+      const r = json(401, { detail: 'unauthorized' });
+      r.headers.set('WWW-Authenticate', 'Bearer');
+      return r;
+    });
     const api = createApiClient({ baseUrl: 'https://s.test', tokens, fetch });
     await expect(api.me()).rejects.toMatchObject({ code: 'unauthorized' });
     expect(tokens.value).toBeNull();
@@ -67,6 +75,29 @@ describe('cliente del servidor', () => {
     const other = createApiClient({ baseUrl: 'https://s.test', tokens, fetch: async () => new Response('<html>', { status: 200 }) });
     await expect(other.health()).rejects.toBeInstanceOf(ApiError);
     await expect(other.health()).rejects.toMatchObject({ code: 'not_stocky' });
+  });
+
+  it('una contraseña incorrecta no provoca renovar la sesión', async () => {
+    const tokens = memoryTokens({ accessToken: 'a', refreshToken: 'r1-xxxxxxxxxxxxxxxxxxxx' }); // secret-scan: ignore (token ficticio de prueba)
+    const fetch = jest.fn(async () => json(401, { detail: 'invalid_credentials' }));
+    const api = createApiClient({ baseUrl: 'https://s.test', tokens, fetch });
+    await expect(api.changePassword('mal', 'otra-contraseña-larga')).rejects.toMatchObject({ code: 'invalid_credentials' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(tokens.value).not.toBeNull();
+  });
+
+  it('con verificación en dos pasos, el login devuelve el token intermedio y no guarda sesión', async () => {
+    const tokens = memoryTokens();
+    const fetch = jest.fn(async (url: string) =>
+      url.endsWith('/auth/login')
+        ? json(200, { mfa_required: true, mfa_token: 'mfa-token-xxxxxxxxxxxxxxxx' }) // secret-scan: ignore (token ficticio de prueba)
+        : json(200, { access_token: 'acc', refresh_token: 'ref-xxxxxxxxxxxxxxxxxxxx' }), // secret-scan: ignore (token ficticio de prueba)
+    );
+    const api = createApiClient({ baseUrl: 'https://s.test', tokens, fetch });
+    await expect(api.login('a@b.es', 'x')).resolves.toEqual({ mfaToken: 'mfa-token-xxxxxxxxxxxxxxxx' }); // secret-scan: ignore (dato ficticio de prueba)
+    expect(tokens.value).toBeNull();
+    await api.loginMfa('mfa-token-xxxxxxxxxxxxxxxx', ' 123456 ');
+    expect(tokens.value?.accessToken).toBe('acc');
   });
 
   it('un login con credenciales incorrectas da un error claro', async () => {
