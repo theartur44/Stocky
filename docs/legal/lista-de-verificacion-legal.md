@@ -8,7 +8,7 @@
 
 - [ ] Sustituidos todos los marcadores (`[NOMBRE DEL RESPONSABLE]`, `[CORREO DE CONTACTO]`, `[FECHA DE ACTUALIZACIÓN]`, etc.) — buscar con `grep -rn "\[" docs/legal`.
 - [ ] Revisión de todos los documentos por un profesional jurídico o de protección de datos.
-- [ ] Decidida la licencia del proyecto (`terminos-de-uso.md §9`, `licencias-de-terceros.md §1`).
+- [x] Decidida la licencia del proyecto: MIT, código abierto (`LICENSE`, `terminos-de-uso.md §9`, `licencias-de-terceros.md §1`).
 - [ ] Política de privacidad publicada en una URL pública y accesible ([URL DE LA POLÍTICA]) y enlazada en Google Play y en la app.
 - [ ] Información del art. 10 LSSI publicada si aplica.
 - [ ] Decidido el canal y el procedimiento para el ejercicio de derechos.

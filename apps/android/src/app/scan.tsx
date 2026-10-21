@@ -37,7 +37,7 @@ import { errorMessage, logError } from '../state/errors';
 import { resolveScan } from '../services/scanService';
 import { Button, IconButton, LoadingView, PressableScale } from '../ui/components';
 import { ScanLineCard } from '../ui/scan/ScanLineCard';
-import { elevation, font, radius, spacing, useTheme } from '../ui/theme';
+import { elevation, font, radius, spacing, useTheme, withAlpha } from '../ui/theme';
 import { useToast } from '../ui/toast';
 
 const BARCODE_TYPES: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'upc_e', 'itf14', 'code128'];
@@ -446,7 +446,7 @@ export default function QuickScanScreen() {
         style={[
           styles.sheet,
           elevation(colors, 3),
-          { height: sheetAnim, backgroundColor: colors.background, paddingBottom: insets.bottom + spacing.sm },
+          { height: sheetAnim, backgroundColor: withAlpha(colors.background, 0.94), borderColor: colors.glassBorder, paddingBottom: insets.bottom + spacing.sm },
         ]}
       >
         <View {...pan.panHandlers} style={{ gap: spacing.sm }}>
@@ -457,7 +457,7 @@ export default function QuickScanScreen() {
           accessibilityLabel={sheetOpen ? t('quickScan.collapse') : t('quickScan.expand')}
           style={styles.handleArea}
         >
-          <View style={[styles.handle, { backgroundColor: colors.border }]} />
+          <View style={[styles.handle, { backgroundColor: colors.textMuted, opacity: 0.4 }]} />
         </PressableScale>
 
         <View style={styles.sheetHeader}>
@@ -480,7 +480,7 @@ export default function QuickScanScreen() {
         </View>
 
         {manualOpen ? (
-          <View style={[styles.manualRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.manualRow, { backgroundColor: colors.surfaceAlt, borderColor: colors.glassBorder }]}>
             <TextInput
               accessibilityLabel={t('scan.manualEntry')}
               placeholder={t('scan.manualPlaceholder')}
@@ -627,6 +627,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
+    borderWidth: 1,
+    borderBottomWidth: 0,
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
   },

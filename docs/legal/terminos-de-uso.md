@@ -45,7 +45,7 @@ Las recetas son orientativas. Comprueba los alérgenos y el estado de los ingred
 
 ## 9. Propiedad intelectual
 
-El código de Stocky se distribuye bajo la licencia [LICENCIA DEL PROYECTO — PENDIENTE DE DECIDIR]. Los componentes de terceros conservan sus licencias (ver `licencias-de-terceros.md`).
+El código de Stocky es de código abierto y se distribuye bajo la licencia MIT (fichero `LICENSE`). Los componentes de terceros conservan sus licencias (ver `licencias-de-terceros.md`).
 
 ## 10. Privacidad
 

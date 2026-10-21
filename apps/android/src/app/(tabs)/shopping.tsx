@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { defaultShoppingAmount } from '../../domain/inventory';
 import type { Product, ShoppingItem } from '../../domain/models';
@@ -14,12 +15,14 @@ import { useApp } from '../../state/AppProvider';
 import { errorMessage } from '../../state/errors';
 import { useServiceQuery } from '../../state/hooks';
 import {
+  Backdrop,
   Button,
   Card,
   ChipGroup,
   EmptyState,
   ErrorView,
   FadeIn,
+  Glass,
   HorizontalScroller,
   IconButton,
   LoadingView,
@@ -29,7 +32,7 @@ import {
   TextField,
 } from '../../ui/components';
 import { qty } from '../../ui/format';
-import { elevation, font, radius, spacing, useTheme } from '../../ui/theme';
+import { TAB_BAR, elevation, font, radius, spacing, useTheme } from '../../ui/theme';
 import { useToast } from '../../ui/toast';
 
 /** Paso del botón −/+ según la unidad. */
@@ -42,6 +45,8 @@ function stepFor(unit: Unit): number {
 export default function ShoppingScreen() {
   const { services } = useApp();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const tabSpace = insets.bottom + TAB_BAR.height + TAB_BAR.gap;
   const toast = useToast();
   const [listId, setListId] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -144,8 +149,12 @@ export default function ShoppingScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1 }}>
+      <Backdrop />
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: tabSpace + (inCart.length > 0 ? 90 : 30) }]}
+        keyboardShouldPersistTaps="handled"
+      >
         {lists.length > 1 || creating ? (
           <ChipGroup
             scroll
@@ -156,7 +165,7 @@ export default function ShoppingScreen() {
         ) : null}
 
         {/* Entrada rápida */}
-        <View style={[styles.quickAdd, { backgroundColor: colors.surface }, elevation(colors, 2)]}>
+        <Glass strong style={styles.quickAdd}>
           <Ionicons name="add-circle" size={26} color={colors.primary} />
           <TextInput
             ref={inputRef}
@@ -181,7 +190,7 @@ export default function ShoppingScreen() {
               onPress={() => router.push({ pathname: '/scan', params: { mode: 'shopping', listId: current.id } })}
             />
           )}
-        </View>
+        </Glass>
 
         {suggestions.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
@@ -267,7 +276,7 @@ export default function ShoppingScreen() {
       </ScrollView>
 
       {inCart.length > 0 ? (
-        <View style={styles.bottomBar} pointerEvents="box-none">
+        <View style={[styles.bottomBar, { bottom: tabSpace + spacing.sm }]} pointerEvents="box-none">
           <PressableScale accessibilityRole="button" accessibilityLabel={t('shopping.transfer', { count: inCart.length })} onPress={transfer} style={[styles.transferWrap, elevation(colors, 3)]}>
             <LinearGradient colors={colors.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.transfer}>
               <Ionicons name="home" size={20} color="#FFFFFF" />
@@ -314,7 +323,7 @@ function ItemRow({ item }: { item: ShoppingItem }) {
         <View
           style={[
             styles.circle,
-            { borderColor: item.checked ? colors.primary : colors.border, backgroundColor: item.checked ? colors.primary : 'transparent' },
+            { borderColor: item.checked ? colors.primary : colors.textMuted, backgroundColor: item.checked ? colors.primary : 'transparent' },
           ]}
         >
           {item.checked ? <Ionicons name={done ? 'checkmark-done' : 'checkmark'} size={18} color={colors.onPrimary} /> : null}
@@ -350,7 +359,7 @@ function ItemRow({ item }: { item: ShoppingItem }) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingBottom: 140, gap: spacing.md },
+  content: { padding: spacing.lg, gap: spacing.md },
   quickAdd: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radius.pill, paddingLeft: spacing.lg, paddingRight: spacing.xs },
   overline: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   suggestion: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, minHeight: 40, borderRadius: radius.pill, maxWidth: 220 },
@@ -358,7 +367,7 @@ const styles = StyleSheet.create({
   check: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
   circle: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', flexWrap: 'wrap' },
-  bottomBar: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg },
+  bottomBar: { position: 'absolute', left: spacing.lg, right: spacing.lg },
   transferWrap: { borderRadius: radius.md },
   transfer: { minHeight: 56, borderRadius: radius.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
 });

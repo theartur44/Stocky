@@ -6,16 +6,15 @@ import { t } from '../i18n';
 import { useApp } from '../state/AppProvider';
 import { errorMessage } from '../state/errors';
 import { useServiceQuery } from '../state/hooks';
-import { Badge, Body, EmptyState, ErrorView, ListRow, LoadingView, Notice } from '../ui/components';
+import { Backdrop, Badge, Body, CategoryAvatar, EmptyState, ErrorView, Glass, ListRow, LoadingView, Notice } from '../ui/components';
 import { expiryLabel, qty } from '../ui/format';
-import { spacing, useTheme } from '../ui/theme';
+import { spacing } from '../ui/theme';
 
 const HORIZON_DAYS = 365;
 
 /** Todos los lotes con fecha, ordenados por proximidad (los vencidos primero). */
 export default function ExpiringScreen() {
   const { services, settings } = useApp();
-  const { colors } = useTheme();
   const q = useServiceQuery(
     () => services.inventory.listExpiring(toLocalDate(new Date()), HORIZON_DAYS),
     [services],
@@ -26,9 +25,10 @@ export default function ExpiringScreen() {
   const today = toLocalDate(new Date());
 
   return (
+    <View style={{ flex: 1 }}>
+    <Backdrop />
     <FlatList
-      style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
+      contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.sm }}
       data={q.data ?? []}
       keyExtractor={(l) => l.id}
       ListHeaderComponent={
@@ -43,14 +43,18 @@ export default function ExpiringScreen() {
       renderItem={({ item: lot }) => {
         const e = expiryLabel(lot, today, settings.warnDays);
         return (
+          <Glass style={{ paddingHorizontal: spacing.md }}>
           <ListRow
+            left={<CategoryAvatar category={lot.product.category} size={40} />}
             title={lot.product.name}
             subtitle={`${qty(lot.quantityMilli, lot.unit)} · ${t(`locations.${lot.location}`)} · ${t(`expiryKinds.${lot.expiryKind}`)}`}
             right={<Badge label={e.label} tone={e.tone} />}
             onPress={() => router.push({ pathname: '/product/[id]', params: { id: lot.productId } })}
           />
+          </Glass>
         );
       }}
     />
+    </View>
   );
 }

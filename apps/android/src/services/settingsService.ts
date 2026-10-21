@@ -1,4 +1,5 @@
 import { settingsRepo } from '../data/repositories';
+import { isThemeColor, isThemeMode, type ThemeColor, type ThemeMode } from '../domain/appearance';
 import { nowIso, type ServiceContext } from './context';
 
 export type ConsentState = 'unknown' | 'granted' | 'denied';
@@ -23,6 +24,10 @@ export interface Settings {
   recipeVegetarian: boolean;
   /** Tiempo máximo de preparación preferido (minutos, 0 = sin límite). */
   recipeMaxMinutes: number;
+  /** Color principal de la app. */
+  themeColor: ThemeColor;
+  /** Claro, oscuro o según el sistema. */
+  themeMode: ThemeMode;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -34,6 +39,8 @@ export const DEFAULT_SETTINGS: Settings = {
   productLookupConsentAt: null,
   recipeVegetarian: false,
   recipeMaxMinutes: 0,
+  themeColor: 'green',
+  themeMode: 'system',
 };
 
 type Validator<K extends keyof Settings> = (v: unknown) => v is Settings[K];
@@ -51,6 +58,8 @@ const VALIDATORS: { [K in keyof Settings]: Validator<K> } = {
   productLookupConsentAt: (v): v is string | null => v === null || typeof v === 'string',
   recipeVegetarian: isBool,
   recipeMaxMinutes: isInt(0, 600),
+  themeColor: isThemeColor,
+  themeMode: isThemeMode,
 };
 
 /** Interpreta los valores guardados; los desconocidos o corruptos vuelven al valor por defecto. */

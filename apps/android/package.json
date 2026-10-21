@@ -42,6 +42,7 @@
     "prebuild:android": "expo prebuild --platform android --no-install --clean"
   },
   "private": true,
+  "license": "MIT",
   "jest": {
     "preset": "jest-expo",
     "testMatch": [

@@ -7,8 +7,8 @@ import { Animated, StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { t } from '../../i18n';
-import { IconButton, PressableScale, type IconName } from '../../ui/components';
-import { elevation, useTheme } from '../../ui/theme';
+import { Glass, IconButton, PressableScale, type IconName } from '../../ui/components';
+import { TAB_BAR, elevation, radius, useTheme } from '../../ui/theme';
 
 /** Icono de pestaña: al activarse crece con un muelle y aparece una «píldora» detrás. */
 function AnimatedTabIcon({ name, color, focused }: { name: IconName; color: ColorValue; focused: boolean }) {
@@ -49,7 +49,7 @@ function ScanTabButton() {
         accessibilityHint={t('quickScan.tabHint')}
         onPress={() => router.push('/scan')}
         scaleTo={0.9}
-        style={[styles.scanButton, elevation(colors, 3), { borderColor: colors.surface }]}
+        style={[styles.scanButton, elevation(colors, 3), { borderColor: colors.surfaceSolid }]}
       >
         <LinearGradient colors={colors.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.scanInner}>
           <Ionicons name="barcode-outline" size={30} color="#FFFFFF" />
@@ -77,13 +77,22 @@ export default function TabsLayout() {
         animation: 'shift',
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        // Barra flotante de cristal: el contenido se ve pasar por debajo.
         tabBarStyle: {
-          backgroundColor: colors.surface,
+          position: 'absolute',
+          left: 12,
+          right: 12,
+          bottom: insets.bottom + TAB_BAR.gap,
+          height: TAB_BAR.height,
+          paddingTop: 8,
+          paddingBottom: 6,
+          borderRadius: radius.xl + 5,
           borderTopWidth: 0,
-          height: 64 + insets.bottom,
-          paddingTop: 6,
+          backgroundColor: 'transparent',
+          elevation: 0,
           ...elevation(colors, 3),
         },
+        tabBarBackground: () => <Glass bar style={[StyleSheet.absoluteFill, { borderRadius: radius.xl + 5 }]} />,
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
         headerStyle: { backgroundColor: colors.background },
         headerShadowVisible: false,

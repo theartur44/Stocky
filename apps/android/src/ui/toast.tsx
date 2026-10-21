@@ -64,7 +64,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               elevation(colors, 3),
               {
                 bottom: insets.bottom + 88,
-                backgroundColor: colors.surface,
+                backgroundColor: colors.surfaceSolid,
+                borderColor: colors.glassBorder,
                 borderLeftColor: accent,
                 opacity: anim,
                 transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }],
@@ -93,6 +94,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.md,
+    borderWidth: 1,
     borderLeftWidth: 5,
   },
 });

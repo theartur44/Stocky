@@ -98,4 +98,4 @@ El identificador de paquete `com.stoky.app` (escrito con el nombre anterior) es 
 
 ## Licencia
 
-Pendiente de decisión del titular (ver [docs/legal/licencias-de-terceros.md](docs/legal/licencias-de-terceros.md)). Datos de productos: Open Food Facts, licencia ODbL.
+Stocky es **software libre de código abierto** bajo la [licencia MIT](LICENSE): se puede usar, copiar, modificar y redistribuir libremente, conservando el aviso de copyright y de licencia. Los componentes de terceros conservan sus propias licencias (ver [docs/legal/licencias-de-terceros.md](docs/legal/licencias-de-terceros.md)). Datos de productos: Open Food Facts, licencia ODbL.

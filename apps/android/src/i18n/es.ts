@@ -304,6 +304,11 @@ export const es = {
   },
   settings: {
     title: 'Ajustes',
+    appearance: 'Apariencia',
+    themeColor: 'Color de la app',
+    themeMode: 'Modo',
+    themeModes: { system: 'Automático', light: 'Claro', dark: 'Oscuro' },
+    themeColors: { green: 'Verde', blue: 'Azul', violet: 'Violeta', pink: 'Rosa', orange: 'Naranja', teal: 'Turquesa' },
     notifications: 'Avisos de caducidad',
     notificationsEnabled: 'Activar avisos',
     notificationsDenied: 'Android no permite notificaciones para Stocky. Actívalas en los ajustes del sistema.',
@@ -329,8 +334,9 @@ export const es = {
     deleteAllDone: 'Se han eliminado todos los datos.',
     about: 'Acerca de',
     version: 'Versión {version}',
+    license: 'Stocky es software libre de código abierto (licencia MIT).',
     legal:
-      'Política de privacidad, términos y licencias: consulta la documentación del proyecto (docs/legal). Documentos pendientes de revisión profesional.',
+      'Política de privacidad, términos y licencias de terceros: consulta la documentación del proyecto (docs/legal). Documentos pendientes de revisión profesional.',
     offData: 'Datos de productos: Open Food Facts (licencia ODbL).',
   },
   notifications: {

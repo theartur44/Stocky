@@ -11,12 +11,14 @@ import { useApp } from '../../state/AppProvider';
 import { errorMessage } from '../../state/errors';
 import { useServiceQuery } from '../../state/hooks';
 import {
+  Backdrop,
   Badge,
   Body,
   Card,
   CategoryAvatar,
   ErrorView,
   FadeIn,
+  Glass,
   GradientHeader,
   IconButton,
   ListRow,
@@ -26,7 +28,7 @@ import {
   type IconName,
 } from '../../ui/components';
 import { expiryLabel, qty } from '../../ui/format';
-import { elevation, font, radius, spacing, useTheme } from '../../ui/theme';
+import { font, radius, spacing, useTheme, withAlpha } from '../../ui/theme';
 import { useToast } from '../../ui/toast';
 
 const MAX_ROWS = 5;
@@ -70,7 +72,9 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: 120 }}>
+    <View style={{ flex: 1 }}>
+    <Backdrop />
+    <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
       <GradientHeader style={[styles.hero, { paddingTop: insets.top + spacing.lg }]}>
         <View style={styles.heroTop}>
           <View style={{ flex: 1 }}>
@@ -95,7 +99,7 @@ export default function HomeScreen() {
           accessibilityLabel={t('home.scanCta')}
           accessibilityHint={t('home.scanCtaHint')}
           onPress={() => router.push('/scan')}
-          style={[styles.cta, { backgroundColor: colors.surface }]}
+          style={[styles.cta, { backgroundColor: withAlpha(colors.surfaceSolid, 0.9) }]}
         >
           <View style={[styles.ctaIcon, { backgroundColor: colors.primarySoft }]}>
             <Ionicons name="barcode-outline" size={26} color={colors.primary} />
@@ -173,6 +177,7 @@ export default function HomeScreen() {
         ) : null}
       </View>
     </ScrollView>
+    </View>
   );
 }
 
@@ -189,14 +194,10 @@ function Stat({ value, label, icon, onPress, warn }: { value: number; label: str
 }
 
 function QuickAction({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
-  const { colors, dark } = useTheme();
+  const { colors } = useTheme();
   return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={[styles.quick, { backgroundColor: colors.surface }, dark ? { borderWidth: 1, borderColor: colors.border } : elevation(colors, 1)]}
-    >
+    <PressableScale accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.quickWrap}>
+      <Glass style={styles.quick}>
       <View style={[styles.quickIcon, { backgroundColor: colors.primarySoft }]}>
         <Ionicons name={icon} size={22} color={colors.primary} />
       </View>
@@ -208,6 +209,7 @@ function QuickAction({ icon, label, onPress }: { icon: IconName; label: string; 
       >
         {label}
       </Text>
+      </Glass>
     </PressableScale>
   );
 }
@@ -222,11 +224,21 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   stats: { flexDirection: 'row', gap: spacing.sm },
-  stat: { flex: 1, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: radius.md, padding: spacing.md, gap: 2 },
+  stat: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: 2,
+  },
   statValue: { color: '#FFFFFF', fontSize: font.heading, fontWeight: '800' },
   statLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600' },
   cta: {
@@ -234,12 +246,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.6)',
     padding: spacing.md,
   },
   ctaIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   body: { padding: spacing.lg, gap: spacing.md },
   quickGrid: { flexDirection: 'row', gap: spacing.sm },
-  quick: { flex: 1, borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: 4, alignItems: 'center', gap: spacing.sm },
+  quickWrap: { flex: 1 },
+  quick: { flexGrow: 1, borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: 4, alignItems: 'center', gap: spacing.sm },
   quickIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   okRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 48 },
 });

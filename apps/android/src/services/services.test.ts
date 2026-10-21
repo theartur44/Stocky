@@ -231,6 +231,16 @@ describe('ajustes y privacidad', () => {
     expect(st.productLookupConsentAt).toBe(new Date('2026-10-13T10:00:00').toISOString());
   });
 
+  it('guarda el color y el modo de la app y rechaza valores desconocidos', async () => {
+    const s = await setupServices();
+    expect((await s.settings.get()).themeColor).toBe('green');
+    const st = await s.settings.update({ themeColor: 'violet', themeMode: 'dark' });
+    expect(st).toMatchObject({ themeColor: 'violet', themeMode: 'dark' });
+    await expect(s.settings.update({ themeColor: 'magenta' as never })).rejects.toThrow();
+    await s.db.run("UPDATE settings SET value = '\"neon\"' WHERE key = 'themeColor'");
+    expect((await s.settings.get()).themeColor).toBe('green');
+  });
+
   it('ignora valores corruptos', async () => {
     const s = await setupServices();
     await s.db.run("INSERT INTO settings (key, value) VALUES ('warnDays', '{roto')");

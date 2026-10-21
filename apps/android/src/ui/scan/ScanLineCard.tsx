@@ -52,7 +52,7 @@ export const ScanLineCard = memo(function ScanLineCard({
     : t('quickScan.noDate');
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: needsName ? colors.accent : colors.border }]}>
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: needsName ? colors.accent : colors.glassBorder }]}>
       <PressableScale
         onPress={onToggle}
         scaleTo={0.98}

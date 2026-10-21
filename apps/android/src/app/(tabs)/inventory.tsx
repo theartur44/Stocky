@@ -12,6 +12,7 @@ import { useApp } from '../../state/AppProvider';
 import { errorMessage } from '../../state/errors';
 import { useServiceQuery } from '../../state/hooks';
 import {
+  Backdrop,
   Badge,
   Button,
   CategoryAvatar,
@@ -19,6 +20,7 @@ import {
   EmptyState,
   ErrorView,
   FadeIn,
+  Glass,
   IconButton,
   LoadingView,
   PressableScale,
@@ -26,7 +28,7 @@ import {
   type IconName,
 } from '../../ui/components';
 import { expiryLabel, qty } from '../../ui/format';
-import { elevation, font, radius, spacing, useTheme } from '../../ui/theme';
+import { font, radius, spacing, useTheme } from '../../ui/theme';
 import { useToast } from '../../ui/toast';
 
 type Filter = 'in_stock' | 'expiring' | 'out' | 'all' | Location;
@@ -100,7 +102,8 @@ export default function InventoryScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1 }}>
+      <Backdrop />
       <FlatList
         data={items}
         keyExtractor={(s) => s.product.id}
@@ -139,8 +142,8 @@ export default function InventoryScreen() {
                 accessibilityLabel={`${s.product.name}. ${s.lots.length === 0 ? t('inventory.noStock') : qty(s.totalMilli, s.product.defaultUnit)}. ${e.label}`}
                 onPress={() => router.push({ pathname: '/product/[id]', params: { id: s.product.id } })}
                 scaleTo={0.98}
-                style={[styles.item, { backgroundColor: colors.surface }, elevation(colors, 1)]}
               >
+                <Glass style={styles.item}>
                 <CategoryAvatar category={s.product.category} />
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={{ color: colors.text, fontWeight: '700', fontSize: font.body }} numberOfLines={1}>
@@ -163,6 +166,7 @@ export default function InventoryScreen() {
                     onPress={() => void consumeOne(s)}
                   />
                 ) : null}
+                </Glass>
               </PressableScale>
             </FadeIn>
           );
@@ -173,7 +177,7 @@ export default function InventoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingBottom: 120, gap: spacing.sm },
+  content: { padding: spacing.lg, paddingBottom: 140, gap: spacing.sm },
   countRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   item: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.lg },
 });

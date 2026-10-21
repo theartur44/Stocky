@@ -5,6 +5,7 @@ import { useEffect, useRef, type ComponentProps, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
   type PressableProps,
   type StyleProp,
   type TextInputProps,
@@ -20,7 +22,7 @@ import {
 
 import type { Category } from '../domain/models';
 import { t } from '../i18n';
-import { CATEGORY_STYLE, elevation, font, radius, spacing, useTheme } from './theme';
+import { CATEGORY_STYLE, elevation, font, radius, spacing, useTheme, withAlpha } from './theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -103,35 +105,83 @@ export function FadeIn({ children, delay = 0, style }: { children: ReactNode; de
   );
 }
 
-/** Contenedor con desplazamiento y márgenes coherentes. */
-export function Screen({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
+const GLOW = require('../../assets/glow.png') as number;
+
+/**
+ * Fondo de cristal: color base con tres manchas de color difuminadas (una
+ * imagen de brillo radial teñida). Es estático y barato: no hay desenfoque en
+ * tiempo real. Las manchas no tocan el borde superior para que no se note el
+ * corte con la cabecera.
+ */
+export function Backdrop() {
   const { colors } = useTheme();
-  if (!scroll) return <View style={[styles.screen, { backgroundColor: colors.background }]}>{children}</View>;
+  const { width: w, height: h } = useWindowDimensions();
+  const blob = (color: string, size: number, left: number, top: number) => (
+    <Image
+      source={GLOW}
+      accessible={false}
+      fadeDuration={0}
+      style={{ position: 'absolute', width: size, height: size, left, top, tintColor: color, opacity: colors.blobOpacity }}
+    />
+  );
   return (
-    <ScrollView
-      style={{ backgroundColor: colors.background }}
-      contentContainerStyle={styles.screenContent}
-      keyboardShouldPersistTaps="handled"
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.background, overflow: 'hidden' }]}>
+      {blob(colors.blobs[0], w * 1.25, w * 0.2, -w * 0.15)}
+      {blob(colors.blobs[1], w * 1.05, -w * 0.4, h * 0.36)}
+      {blob(colors.blobs[2], w * 1.15, w * 0.3, h * 0.68)}
+    </View>
+  );
+}
+
+/** Pantalla con fondo de cristal. Para listas propias usar `Backdrop` directamente. */
+export function Screen({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
+  return (
+    <View style={styles.screen}>
+      <Backdrop />
+      {scroll ? (
+        <ScrollView contentContainerStyle={styles.screenContent} keyboardShouldPersistTaps="handled">
+          {children}
+        </ScrollView>
+      ) : (
+        children
+      )}
+    </View>
+  );
+}
+
+/**
+ * Superficie de cristal: translúcida, con un brillo en la esquina superior y
+ * un borde claro. Base de tarjetas, barras y botones flotantes.
+ */
+export function Glass({
+  children,
+  style,
+  strong,
+  bar,
+}: {
+  children?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  /** Algo más opaco (campos, buscador). */
+  strong?: boolean;
+  /** Opaco, para barras que flotan sobre texto. */
+  bar?: boolean;
+}) {
+  const { colors } = useTheme();
+  return (
+    <LinearGradient
+      colors={bar ? [colors.surfaceBar, colors.surfaceBar] : [colors.glassHighlight, strong ? colors.surfaceAlt : colors.surface]}
+      locations={[0, 0.55]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0.6, y: 1 }}
+      style={[styles.glass, { borderColor: colors.glassBorder }, elevation(colors, 1), style]}
     >
       {children}
-    </ScrollView>
+    </LinearGradient>
   );
 }
 
 export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const { colors, dark } = useTheme();
-  return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.surface },
-        dark ? { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border } : elevation(colors, 1),
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
+  return <Glass style={[styles.card, style]}>{children}</Glass>;
 }
 
 /** Cabecera con el degradado de la marca. */
@@ -200,7 +250,7 @@ export function Button({
   const { colors } = useTheme();
   const palette: Record<ButtonVariant, { bg: string; fg: string; border: string }> = {
     primary: { bg: colors.primary, fg: colors.onPrimary, border: colors.primary },
-    secondary: { bg: colors.surface, fg: colors.primary, border: colors.border },
+    secondary: { bg: colors.surfaceAlt, fg: colors.primary, border: colors.glassBorder },
     tonal: { bg: colors.primarySoft, fg: colors.primary, border: colors.primarySoft },
     danger: { bg: colors.danger, fg: colors.onDanger, border: colors.danger },
     ghost: { bg: 'transparent', fg: colors.primary, border: 'transparent' },
@@ -302,7 +352,7 @@ export function TextField({
       <View
         style={[
           styles.inputWrap,
-          { backgroundColor: colors.surfaceAlt, borderColor: error ? colors.danger : 'transparent' },
+          { backgroundColor: colors.surfaceAlt, borderColor: error ? colors.danger : colors.glassBorder },
         ]}
       >
         {icon ? <Ionicons name={icon} size={20} color={colors.textMuted} /> : null}
@@ -330,7 +380,7 @@ export function SearchBar(props: TextInputProps & { label: string }) {
   const { colors } = useTheme();
   const { label, ...rest } = props;
   return (
-    <View style={[styles.search, { backgroundColor: colors.surface }, elevation(colors, 1)]}>
+    <Glass strong style={styles.search}>
       <Ionicons name="search" size={20} color={colors.textMuted} />
       <TextInput
         accessibilityLabel={label}
@@ -340,7 +390,7 @@ export function SearchBar(props: TextInputProps & { label: string }) {
         autoCorrect={false}
         {...rest}
       />
-    </View>
+    </Glass>
   );
 }
 
@@ -372,8 +422,8 @@ export function ChipGroup<T extends string>({
         style={[
           styles.chip,
           {
-            backgroundColor: selected ? colors.primary : colors.surface,
-            borderColor: selected ? colors.primary : colors.border,
+            backgroundColor: selected ? colors.primary : colors.surfaceAlt,
+            borderColor: selected ? colors.primary : colors.glassBorder,
           },
         ]}
       >
@@ -451,7 +501,7 @@ export function SwitchRow({
         value={value}
         onValueChange={onChange}
         disabled={disabled}
-        trackColor={{ true: colors.primary, false: colors.border }}
+        trackColor={{ true: colors.primary, false: withAlpha(colors.textMuted, 0.45) }}
       />
     </View>
   );
@@ -473,7 +523,7 @@ export function Stepper({
 }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.stepper, { backgroundColor: colors.surfaceAlt }]} accessibilityLabel={`${label}: ${value}`}>
+    <View style={[styles.stepper, { backgroundColor: colors.surfaceAlt, borderColor: colors.glassBorder }]} accessibilityLabel={`${label}: ${value}`}>
       <IconButton icon="remove" label={`${t('common.less')} ${label}`} onPress={onDecrement} size={20} disabled={!canDecrement} />
       <Text style={{ color: colors.text, fontWeight: '700', minWidth: 44, textAlign: 'center' }}>{value}</Text>
       <IconButton icon="add" label={`${t('common.more')} ${label}`} onPress={onIncrement} size={20} />
@@ -631,8 +681,9 @@ export function Gap({ size = spacing.md }: { size?: number }) {
 
 export const styles = StyleSheet.create({
   screen: { flex: 1 },
-  screenContent: { padding: spacing.lg, paddingBottom: 120, gap: spacing.lg },
-  card: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm },
+  screenContent: { padding: spacing.lg, paddingBottom: 140, gap: spacing.lg },
+  glass: { borderRadius: radius.lg, borderWidth: 1 },
+  card: { padding: spacing.lg, gap: spacing.sm },
   hero: { borderRadius: radius.xl, padding: spacing.xl, gap: spacing.sm },
   title: { fontWeight: '800', letterSpacing: -0.3 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
@@ -683,7 +734,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
   },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 52 },
-  stepper: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.pill },
+  stepper: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.pill, borderWidth: 1 },
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingVertical: spacing.sm, gap: spacing.md },
   rowRight: { maxWidth: '48%', flexShrink: 1, alignItems: 'flex-end' },
   rowIcon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
