@@ -1,11 +1,12 @@
-# Proxy inverso con HTTPS automático (Let's Encrypt) delante de la API.
+# Modo DOMINIO: HTTPS automático con Let's Encrypt delante de la API.
+# Requiere que el dominio apunte a este servidor y los puertos 80 y 443 abiertos.
 {
 	email {$ACME_EMAIL}
 	# Sin panel de administración expuesto.
 	admin off
 }
 
-{$STOCKY_DOMAIN} {
+(api) {
 	encode zstd gzip
 
 	request_body {
@@ -29,4 +30,8 @@
 	handle {
 		respond 404
 	}
+}
+
+{$STOCKY_ADDRESS} {
+	import api
 }

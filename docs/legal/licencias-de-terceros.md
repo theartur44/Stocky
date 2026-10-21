@@ -25,6 +25,8 @@
 | expo-haptics | 57.0.x | MIT |
 | expo-linear-gradient | 57.0.x | MIT |
 | expo-blur | 57.0.3 | MIT |
+| expo-secure-store | 57.0.x | MIT |
+| expo-build-properties (solo compilación) | 57.0.x | MIT |
 | expo-font | 57.0.4 | MIT |
 | @expo/vector-icons (incluye Ionicons) | 15.1.1 | MIT |
 | react / react-dom | 19.2.3 | MIT |

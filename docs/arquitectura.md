@@ -172,6 +172,7 @@ Se mantiene `apps/android` como nombre por petición, aunque el código Expo es 
 | 6 | Documentación legal y de pruebas, scripts de secretos y licencias | Revisión; scripts ejecutados | Borradores pendientes de revisión profesional |
 | 7 | Esqueleto del servidor (FastAPI), Docker Compose, contrato de sincronización, CI | `pytest`, `docker compose config` | Hecho; imagen Docker no construida |
 | 8 | Prueba en dispositivo Android real | Checklist manual en `docs/pruebas.md §4` | **Pendiente** (requiere SDK/dispositivo) |
+| 10 | Conexión de la app con el servidor (IP o dominio), hogar compartido y sincronización; instalador Docker `stocky.sh` | Jest con servidor simulado (12 casos), integración con el servidor real y con la pila Docker | Hecho; **sin probar en móviles reales** |
 
 ### Etapa 9 (2026-10-13): rediseño visual y escaneo rápido
 

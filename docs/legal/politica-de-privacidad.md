@@ -1,6 +1,6 @@
 # Política de privacidad de Stocky
 
-> **BORRADOR PENDIENTE DE REVISIÓN JURÍDICA.** Refleja el comportamiento de la versión 0.1.0 de la aplicación Android (sin servidor). Debe actualizarse antes de publicar cualquier versión que cambie el tratamiento de datos.
+> **BORRADOR PENDIENTE DE REVISIÓN JURÍDICA.** Refleja el comportamiento de la versión 0.1.0 de la aplicación Android, incluida la sincronización opcional con un servidor propio (§12). Debe actualizarse antes de publicar cualquier versión que cambie el tratamiento de datos.
 
 **Última actualización:** [FECHA DE ACTUALIZACIÓN]
 **Versión de la app a la que se refiere:** 0.1.0
@@ -100,9 +100,14 @@ Los datos se guardan en el almacenamiento privado de la app, protegido por el ai
 
 Stocky no solicita alergias, intolerancias ni otros datos de salud. Las recetas y avisos son orientativos y **no** constituyen consejo médico ni nutricional.
 
-## 12. Sincronización futura
+## 12. Sincronización con un servidor (opcional)
 
-Si en el futuro se ofrece sincronización entre dispositivos mediante un servidor, será **opcional**, se informará antes de activarla y se actualizará esta política.
+La app permite conectar, de forma **opcional y desactivada por defecto**, un servidor de sincronización para compartir el inventario y las listas entre los móviles de un hogar. Stocky no ofrece un servidor propio: lo instala y gestiona **quien lo configura** (por ejemplo, un miembro de la familia en su equipo), que pasa a ser responsable de los datos que guarda. [REVISAR por un profesional: escenario C de `docs/legal/README.md`.]
+
+- **Qué se envía al activarlo:** el correo y la contraseña de la cuenta (la contraseña solo para iniciar sesión; el servidor guarda únicamente un resumen Argon2id), el nombre del hogar y el contenido del inventario y de las listas de la compra. Los ajustes del móvil (avisos, tema, consentimientos) **no** se envían.
+- **Cómo se protege:** con un dominio, la conexión va cifrada (HTTPS). Con una dirección de red local la conexión va sin cifrar dentro de esa red y la app lo avisa. En el servidor, el inventario, las listas, los correos y los nombres se guardan cifrados (AES-256-GCM). La sesión se guarda en el almacén seguro de Android.
+- **Quién lo ve:** los miembros del mismo hogar y quien administra el servidor.
+- **Cómo dejar de usarlo:** Ajustes → Servidor → Desconectar este móvil. Los datos del hogar en el servidor solo los puede borrar su propietario o quien administra el servidor.
 
 ## 13. Cambios en esta política
 

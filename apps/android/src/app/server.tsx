@@ -54,7 +54,6 @@ function ConnectForm() {
   return (
     <Screen>
       <Card>
-        <Title>{t('server.title')}</Title>
         <Body muted>{t('server.intro')}</Body>
       </Card>
       <Card>

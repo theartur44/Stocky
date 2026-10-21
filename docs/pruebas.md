@@ -82,6 +82,14 @@ Usar un dispositivo o emulador Android 10+ con una development build (`npx expo 
 | M16 | Tamaño de fuente máximo y pantalla pequeña | Sin texto cortado que impida usar la app |
 | M17 | Eliminar todos los datos | Todo vacío; avisos cancelados |
 | M18 | Actualizar desde la versión anterior | Los datos se conservan (migraciones) |
+| S1 | Servidor en modo IP: Ajustes → Servidor → `IP:puerto` | Aviso de conexión sin cifrar; con una IP pública o un dominio con `http://` la app lo rechaza |
+| S2 | Crear cuenta con el código de registro y crear hogar | «Conectado»; los datos del móvil aparecen en el servidor (Cambios por enviar = 0) |
+| S3 | Invitar y unir un segundo móvil | Las listas por defecto se fusionan en una; los productos con el mismo código de barras quedan como uno solo |
+| S4 | Consumir a la vez el mismo producto en los dos móviles | Al sincronizar se restan los dos consumos |
+| S5 | Modo avión, hacer cambios y volver a conectar | Los cambios se envían solos al volver (o con «Sincronizar ahora») |
+| S6 | Apagar el servidor | La app sigue funcionando; el error se muestra en Ajustes → Servidor |
+| S7 | Desconectar este móvil | Los datos se quedan en el móvil; los del hogar siguen en el servidor |
+| S8 | Eliminar todos los datos estando conectado | Se desconecta primero; el hogar del servidor no se borra |
 
 ## 5. Cómo informar y reproducir errores (sin datos personales)
 

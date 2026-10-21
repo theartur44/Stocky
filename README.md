@@ -13,7 +13,8 @@ Aplicación Android para gestionar el inventario de alimentos de casa: fechas de
 - Listas de la compra con entrada rápida («2 leche»), sugerencias de lo que se acaba, unión de duplicados y paso al inventario atómico e idempotente.
 - Avisos locales de caducidad agrupados por día, sin nombres de productos por defecto.
 - Sugerencias de recetas calculadas en el dispositivo, priorizando lo que vence antes.
-- Tema claro/oscuro, componentes accesibles, textos en español (preparado para catalán e inglés).
+- Estilo «cristal», seis colores a elegir y modo claro/oscuro/automático; componentes accesibles; textos en español (preparado para catalán e inglés).
+- **Hogar compartido opcional** con tu propio servidor (IP de casa o dominio): cuentas, invitaciones y sincronización automática entre móviles, también sin conexión. Instalación del servidor con Docker en un paso: [docs/servidor-docker.md](docs/servidor-docker.md).
 - Borrado completo de datos desde Ajustes.
 
 ## Estructura
@@ -24,10 +25,11 @@ apps/android/        App Expo (React Native + TypeScript estricto)
   src/domain/        Lógica pura: unidades, fechas, caducidades, recetas, validación
   src/data/          SQLite: adaptador, migraciones, repositorios, recetas locales
   src/services/      Casos de uso (inventario, compra, ajustes, escáner, recetas, privacidad)
-  src/integrations/  Open Food Facts y notificaciones
+  src/integrations/  Open Food Facts, notificaciones y almacén seguro de la sesión
+  src/sync/          Sincronización con el servidor (cliente HTTP y motor push/pull)
   src/state/ src/ui/ src/i18n/
-services/api/        Servidor futuro (FastAPI) — esqueleto y contrato de sincronización
-infra/docker/        Docker Compose del servidor futuro
+services/api/        Servidor de sincronización (FastAPI + PostgreSQL cifrado)
+infra/docker/        Docker Compose del servidor e instalador stocky.sh
 docs/                Arquitectura, pruebas y documentación legal (docs/legal)
 scripts/             Revisión de secretos y licencias
 ```

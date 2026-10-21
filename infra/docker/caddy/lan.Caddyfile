@@ -1,0 +1,32 @@
+# Modo RED LOCAL (IP): HTTP sin cifrar, pensado solo para la wifi de casa.
+# No abras este puerto en el router: desde Internet usa el modo dominio (HTTPS).
+# La conexión entre la API y PostgreSQL sigue cifrada (TLS 1.3) y los datos
+# del inventario se guardan cifrados en la base de datos.
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	encode zstd gzip
+
+	request_body {
+		max_size 1MB
+	}
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000 {
+			header_up -X-Forwarded-Host
+		}
+	}
+
+	handle {
+		respond 404
+	}
+}

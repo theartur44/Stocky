@@ -13,7 +13,8 @@
 | Cifrado de datos en reposo (AES-256-GCM con AAD por fila, rotación de claves) | Implementado y probado |
 | PostgreSQL con TLS 1.3 verificado + SCRAM; migraciones Alembic | Probado con PostgreSQL 16 real (`STOCKY_TEST_DATABASE_URL`) y en la pila Docker con PostgreSQL 17 |
 | Pila Docker (Caddy HTTPS + API + PostgreSQL en red interna), copias cifradas y restauración | Probada de extremo a extremo |
-| Conexión desde la app | **Pendiente** (siguiente etapa) |
+| Conexión desde la app (cuenta, hogar, invitaciones, sincronización automática) | Implementado; probado con dos móviles simulados contra el servidor real y contra la pila Docker. **Falta probar en móviles reales** |
+| Instalación con un comando (`infra/docker/stocky.sh`, modo IP o dominio) | Probada en la pila Docker (modo IP) |
 
 ## Desarrollo
 
@@ -115,9 +116,11 @@ GET /sync/pull?since=<rev>&limit=500
   - Paso de la compra al inventario: una sola operación compuesta con `op_id`, aplicada en una transacción.
 - **Autorización**: cada operación se valida contra el hogar del token y el rol (`viewer` no puede escribir). Los `entity_id` de otro hogar se tratan como inexistentes.
 
-### Cambios previstos en la app
+### Implementación en la app (`apps/android/src/sync/`)
 
-1. Migración SQLite que añade `household_id`, `rev`, `deleted_at` y la tabla `pending_ops` (escrita en la misma transacción que cada cambio).
-2. Implementación de los servicios con un *decorador* de sincronización: las pantallas no cambian (ver `docs/arquitectura.md §3`).
-3. Tokens en `expo-secure-store`, nunca en SQLite.
-4. Dirección del servidor configurable y validada con `validateServerUrl` (`apps/android/src/domain/serverUrl.ts`): solo `https://` en producción; `http://` únicamente hacia `localhost` o redes privadas en desarrollo; sin credenciales en la URL.
+1. Migración 3: `sync_state`, `sync_outbox` (la rellenan triggers de SQLite en la misma transacción que cada cambio, así ningún servicio tiene que acordarse de registrarlo) y `sync_pending` (lote preparado con `op_id` fijo para reenvíos idempotentes).
+2. Lotes: si solo cambia la cantidad se envía `adjust_quantity` con la diferencia.
+3. Recepción: los cambios locales sin enviar ganan; productos con el mismo código de barras y listas con el mismo nombre se fusionan de forma determinista (sobrevive el identificador menor); limpieza de huérfanos; resincronización completa tras un `410`.
+4. Tokens en `expo-secure-store`, nunca en SQLite.
+5. Dirección validada con `normalizeServerAddress` (`apps/android/src/domain/serverUrl.ts`): `https://` obligatorio salvo hacia la red local (localhost, 10/8, 172.16/12, 192.168/16, `*.local`), donde se admite `http://` con aviso; sin credenciales en la URL.
+6. Prueba contra el servidor real: `STOCKY_TEST_SERVER=http://localhost:8765 STOCKY_TEST_REGISTRATION_CODE=… npx jest server.integration`.
