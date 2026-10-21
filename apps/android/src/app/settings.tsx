@@ -8,6 +8,7 @@ import { THEME_COLORS, THEME_MODES, type ThemeColor } from '../domain/appearance
 import { t } from '../i18n';
 import * as notifications from '../integrations/notifications';
 import { useApp } from '../state/AppProvider';
+import { useSync } from '../state/SyncProvider';
 import { errorMessage } from '../state/errors';
 import type { Settings } from '../services/settingsService';
 import { Body, Button, Card, ChipGroup, Notice, PressableScale, Screen, SwitchRow, Title } from '../ui/components';
@@ -72,6 +73,7 @@ const MINUTES_OPTIONS = [0, 20, 30, 45, 60].map((m) => ({
 
 export default function SettingsScreen() {
   const { services, settings, syncNotifications } = useApp();
+  const sync = useSync();
   const [message, setMessage] = useState<{ text: string; tone: 'neutral' | 'warning' | 'danger' } | null>(null);
 
   const update = async (patch: Partial<Settings>) => {
@@ -104,6 +106,8 @@ export default function SettingsScreen() {
         onPress: async () => {
           try {
             await notifications.cancelAll().catch(() => undefined);
+            // Antes de borrar, este móvil se desconecta del hogar: los datos del servidor no se tocan.
+            if (sync.status.enabled || sync.session) await sync.disconnect().catch(() => undefined);
             await services.privacy.deleteAllData();
             await services.shopping.ensureDefaultList();
             setMessage({ text: t('settings.deleteAllDone'), tone: 'neutral' });
@@ -127,6 +131,19 @@ export default function SettingsScreen() {
           options={MODE_OPTIONS}
           value={settings.themeMode}
           onChange={(m) => void update({ themeMode: m })}
+        />
+      </Card>
+
+      <Card>
+        <Title>{t('server.settingsCard')}</Title>
+        <Body muted>
+          {sync.status.enabled ? t('server.settingsOn', { household: sync.status.householdName ?? '' }) : t('server.settingsOff')}
+        </Body>
+        <Button
+          label={sync.status.enabled ? t('server.manage') : t('server.configure')}
+          icon="server-outline"
+          variant="secondary"
+          onPress={() => router.push('/server')}
         />
       </Card>
 

@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { t } from '../i18n';
 import { AppProvider, useApp } from '../state/AppProvider';
+import { SyncProvider } from '../state/SyncProvider';
 import { AppearanceProvider, useTheme } from '../ui/theme';
 import { ToastProvider } from '../ui/toast';
 
@@ -25,7 +26,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AppProvider>
-        <ThemedApp />
+        <SyncProvider>
+          <ThemedApp />
+        </SyncProvider>
       </AppProvider>
     </SafeAreaProvider>
   );
@@ -78,6 +81,7 @@ function Navigation() {
           <Stack.Screen name="scan" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
           <Stack.Screen name="expiring" options={{ title: t('expiring.title') }} />
           <Stack.Screen name="settings" options={{ title: t('settings.title') }} />
+          <Stack.Screen name="server" options={{ title: t('server.title') }} />
           <Stack.Screen name="product/new" options={{ title: t('product.newTitle') }} />
           <Stack.Screen name="product/[id]" options={{ title: '' }} />
           <Stack.Screen name="product/edit/[id]" options={{ title: t('product.editTitle') }} />

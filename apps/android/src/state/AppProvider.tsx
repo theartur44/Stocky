@@ -33,6 +33,9 @@ type Listener = (scope: ChangeScope) => void;
 interface AppContextValue {
   services: Services;
   settings: Settings;
+  db: SqlDatabase;
+  /** Avisa a las pantallas de un cambio hecho fuera de los servicios (p. ej. datos recibidos del servidor). */
+  notify: (scope: ChangeScope) => void;
   /** Suscripción a cambios de datos (para refrescar pantallas). */
   subscribe: (fn: Listener) => () => void;
   /** Reprograma los avisos de caducidad según el inventario y los ajustes. */
@@ -71,6 +74,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const listeners = useRef(new Set<Listener>());
   const servicesRef = useRef<Services | null>(null);
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onChangeRef = useRef<((scope: ChangeScope) => void) | null>(null);
+  const notify = useCallback((scope: ChangeScope) => onChangeRef.current?.(scope), []);
   const [attempt, setAttempt] = useState(0);
 
   const syncNotifications = useCallback(async () => {
@@ -120,6 +125,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
           },
         };
+        onChangeRef.current = ctx.onChange ?? null;
         const services = buildServices(ctx);
         servicesRef.current = services;
         const loaded = await services.settings.get();
@@ -153,8 +159,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AppContextValue | null>(
-    () => (state.status === 'ready' ? { services: state.services, settings, subscribe, syncNotifications } : null),
-    [state, settings, subscribe, syncNotifications],
+    () =>
+      state.status === 'ready' ? { services: state.services, settings, db: state.db, notify, subscribe, syncNotifications } : null,
+    [state, settings, notify, subscribe, syncNotifications],
   );
 
   // Mientras carga se ve la pantalla de inicio nativa con el logo.
