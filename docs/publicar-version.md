@@ -11,12 +11,20 @@ Para que funcione, haz público el repositorio (*Settings → General → Danger
 - Ejecuta `bash scripts/check-secrets.sh`: no debe encontrar secretos. El historial del repositorio también se hace público.
 - Los secretos del servidor (`infra/docker/secrets/`, `.env`) nunca se suben: están en `.gitignore`.
 
+Pasos para hacerlo público:
+
+1. Crea antes la clave de firma propia y sus *secrets* (sección final). Los *secrets* siguen siendo privados aunque el repositorio sea público.
+2. Activa los avisos privados de seguridad: *Settings → Security → Private vulnerability reporting → Enable* (ver `SECURITY.md`).
+3. En *Settings → Actions → General → Fork pull request workflows from outside collaborators*, deja «Require approval for all external contributors».
+4. Si no quieres recibir propuestas, desactiva *Issues* en *Settings → General → Features*.
+5. *Settings → General → Danger Zone → Change visibility → Make public*.
+
 Si prefieres mantenerlo privado, se puede publicar solo los APK en otro repositorio público y cambiar `expo.extra.updates.repo` en `apps/android/app.json`.
 
 ## Publicar (cada versión)
 
 1. En GitHub: **Releases → Draft a new release**.
-2. **Choose a tag**: escribe la versión nueva con el formato `v0.2.0` (cada número de 0 a 99) y pulsa *Create new tag*. En **Target** elige la rama con los cambios.
+2. **Choose a tag**: escribe la versión nueva con el formato `v0.2.0` (una etiqueta sin ese formato, como `Stocky`, no compila nada) (cada número de 0 a 99) y pulsa *Create new tag*. En **Target** elige la rama con los cambios.
 3. Pon un título y, si quieres, pulsa *Generate release notes*.
 4. **Publish release**.
 
