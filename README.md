@@ -1,105 +1,120 @@
 # Stocky
 
-Aplicación Android para gestionar el inventario de alimentos de casa: fechas de caducidad, listas de la compra y sugerencias de recetas con lo que tienes. **Funciona sin conexión, sin cuenta y sin rastreadores.**
+**Tu despensa, nevera y lista de la compra, siempre al día.**
 
-> Estado: **v0.1.0 en desarrollo.** Probada con pruebas automatizadas y empaquetado; **pendiente de prueba en dispositivo real** (ver [docs/pruebas.md](docs/pruebas.md)). Documentación legal en borrador, pendiente de revisión profesional.
+Stocky es una app para Android que te ayuda a saber qué tienes en casa, qué caduca pronto y qué hay que comprar. Escaneas los productos con la cámara y la app se encarga del resto: te avisa antes de que algo caduque, te sugiere recetas con lo que tienes y lleva la lista de la compra.
 
-## Funciones (v0.1.0)
+Funciona **sin conexión y sin cuenta**: todo se guarda en tu móvil. Si quieres compartir el inventario con tu familia, puedes montar tu **propio servidor** en casa con Docker (instrucciones más abajo). Sin publicidad, sin analítica y sin rastreadores.
 
-- Inventario con catálogo de productos y **lotes** independientes (cantidad, unidad, ubicación, fecha de caducidad o de consumo preferente, fecha estimada, lote del fabricante, notas).
-- Consumo por lote o por producto en orden de caducidad (FEFO), con conversión de unidades (g/kg, ml/l).
-- **Escaneo rápido** de códigos de barras (EAN-13, EAN-8, UPC-A, UPC-E, ITF-14, Code 128): la cámara queda abierta, cada producto se añade al momento y sus datos se buscan en segundo plano; se guarda todo de una vez en casa o en la lista.
-- Consulta opcional a Open Food Facts, **solo con consentimiento** y solo si el producto no está ya en el dispositivo.
-- Listas de la compra con entrada rápida («2 leche»), sugerencias de lo que se acaba, unión de duplicados y paso al inventario atómico e idempotente.
-- Avisos locales de caducidad agrupados por día, sin nombres de productos por defecto.
-- Sugerencias de recetas calculadas en el dispositivo, priorizando lo que vence antes.
-- Estilo «cristal», seis colores a elegir y modo claro/oscuro/automático; componentes accesibles; textos en español (preparado para catalán e inglés).
-- Bienvenida al instalar: **invitado** (todo en el móvil) o **iniciar sesión** en tu servidor.
-- **Aviso de nuevas versiones**: al publicar una release en GitHub se compila el APK y la app avisa para descargarlo ([docs/publicar-version.md](docs/publicar-version.md)).
-- **Hogar compartido opcional** con tu propio servidor (IP de casa o dominio): cuentas con **verificación en dos pasos**, invitaciones y sincronización automática entre móviles, también sin conexión. Desbloqueo con **huella** opcional. Instalación del servidor con Docker en un paso: [docs/servidor-docker.md](docs/servidor-docker.md).
-- Borrado completo de datos desde Ajustes.
+## Qué puedes hacer
 
-## Estructura
+- **Escanear la compra en un momento.** Abre el escáner y ve pasando productos: cada código se añade al instante y los datos (nombre, marca, tamaño) se buscan solos en [Open Food Facts](https://world.openfoodfacts.org), solo si das permiso. Al terminar, lo guardas todo de una vez en casa o en la lista.
+- **Inventario por ubicación:** nevera, congelador o despensa, con cantidades, envases y fechas. Cuando gastas algo, se descuenta primero lo que caduca antes.
+- **Fechas de caducidad y de consumo preferente**, con avisos en el móvil unos días antes. Por defecto, los avisos no muestran nombres de productos en la pantalla de bloqueo.
+- **Lista de la compra** rápida: escribe «2 leche» o «tomates 1 kg», recibe sugerencias de lo que se está acabando y, al volver de comprar, pasa lo comprado al inventario con un toque.
+- **Recetas** sugeridas con lo que tienes, empezando por lo que caduca antes.
+- **Hogar compartido (opcional):** con tu servidor, toda la familia ve el mismo inventario y la misma lista, también sin conexión. Los cambios se sincronizan solos.
+- **Seguridad:** cuentas con verificación en dos pasos y desbloqueo de la app con huella.
+- **A tu gusto:** seis colores, modo claro, oscuro o automático, y un estilo moderno tipo «cristal».
 
-```
-apps/android/        App Expo (React Native + TypeScript estricto)
-  src/app/           Pantallas (Expo Router)
-  src/domain/        Lógica pura: unidades, fechas, caducidades, recetas, validación
-  src/data/          SQLite: adaptador, migraciones, repositorios, recetas locales
-  src/services/      Casos de uso (inventario, compra, ajustes, escáner, recetas, privacidad)
-  src/integrations/  Open Food Facts, notificaciones y almacén seguro de la sesión
-  src/sync/          Sincronización con el servidor (cliente HTTP y motor push/pull)
-  src/state/ src/ui/ src/i18n/
-services/api/        Servidor de sincronización (FastAPI + PostgreSQL cifrado)
-infra/docker/        Docker Compose del servidor e instalador stocky.sh
-docs/                Arquitectura, pruebas y documentación legal (docs/legal)
-scripts/             Revisión de secretos y licencias
-```
+## Instalar la app
 
-Detalles de diseño, riesgos y plan por etapas: [docs/arquitectura.md](docs/arquitectura.md).
+1. Descarga el fichero **`stocky-X.Y.Z.apk`** de la última versión en **[Releases](https://github.com/theartur44/Stocky/releases/latest)**.
+2. Ábrelo en el móvil. Android te pedirá permitir «instalar aplicaciones desconocidas» para el navegador o el gestor de archivos con el que lo abras.
+3. Al abrir Stocky por primera vez, elige:
+   - **Continuar como invitado:** todo se guarda solo en tu móvil. Podrás iniciar sesión más tarde.
+   - **Iniciar sesión / Crear una cuenta:** para compartir el inventario a través de tu servidor (ver abajo).
 
-## Requisitos
+**Actualizaciones:** cuando haya una versión nueva, la app te avisará en Inicio con un botón para descargarla. Se instala encima y tus datos se conservan.
 
-- Node.js **22.13 o superior** (las pruebas usan `node:sqlite`) y npm.
-- Para ejecutar en Android: Android Studio con SDK y un emulador, o un dispositivo con depuración USB. Java 17.
-- La app usa módulos nativos (cámara, SQLite, notificaciones): **no funciona en Expo Go**; necesita una *development build*.
+Requisitos: Android 7.0 o superior.
 
-## Instalación y desarrollo
+## Montar el servidor (opcional) con Docker
 
-```bash
-cd apps/android
-npm ci                      # instala exactamente las versiones del package-lock
-npm run android             # = expo run:android: compila e instala la development build
-npm run start:dev-client    # arranca Metro para una development build ya instalada
-```
+El servidor sirve para que **varios móviles compartan** el inventario y las listas. Lo instalas tú, en tu casa o en tu propio servidor, y los datos no salen de ahí.
 
-Para añadir dependencias usa `npx expo install <paquete>` (elige la versión compatible con el SDK 57).
+### Qué necesitas
 
-## Pruebas y comprobaciones
+- Un equipo con **Linux** encendido de forma continua: un mini PC, una Raspberry Pi 4/5, un NAS con Docker o un servidor. Con 1 GB de RAM es suficiente.
+- **Docker** con **Docker Compose**, más `git`, `openssl` y `curl`:
+  ```bash
+  curl -fsSL https://get.docker.com | sudo sh
+  sudo apt install -y git openssl curl gnupg
+  ```
+  > ⚠️ No uses el Docker de **snap**, el que ofrece el instalador de Ubuntu Server. Está aislado y no puede leer carpetas como `/opt`, y la instalación falla con «bind source path does not exist». Compruébalo con `which docker`: si sale `/snap/bin/docker`, instala el oficial con el comando de arriba o pon Stocky dentro de `/home`.
+
+### Instalación (3 comandos)
 
 ```bash
-cd apps/android
-npm test                    # pruebas unitarias e integración con SQLite real
-npm run typecheck           # TypeScript estricto
-npm run export:android      # comprueba que el código se empaqueta para Android
+git clone https://github.com/theartur44/Stocky.git
+cd Stocky/infra/docker
+./stocky.sh
 ```
 
-Desde la raíz, antes de publicar:
+El instalador te hace unas preguntas:
 
-```bash
-bash scripts/check-secrets.sh
-node scripts/check-licenses.mjs
+| Pregunta | Qué responder |
+|---|---|
+| **Dirección** | Para usarlo **en casa**: la IP del servidor en tu red (te la propone; pulsa Intro). Para usarlo **también fuera** con HTTPS automático: un dominio que apunte a tu IP pública, con los puertos 80 y 443 abiertos en el router. |
+| **Puerto HTTP** (modo IP) | `80`, u otro (p. ej. `8080`) si ya lo usa otro servicio. |
+| **Dominio del túnel** (modo IP, opcional) | Si publicas el servidor con un túnel que pone el HTTPS (Cloudflare Tunnel, Tailscale Funnel…), su dominio. Configura el túnel para que apunte a `http://IP-del-servidor:PUERTO`. Si no, pulsa Intro. |
+| **Correo** (modo dominio) | Para el certificado HTTPS de Let's Encrypt. |
+
+Después genera las claves, arranca todo y te muestra lo que tienes que poner en la app:
+
+```
+Dirección del servidor:  192.168.1.50:8080
+Código de registro:      Xk3p…
 ```
 
-Más información en [docs/pruebas.md](docs/pruebas.md).
+**Guarda una copia de la carpeta `infra/docker/secrets/` fuera del servidor**, por ejemplo en un USB. Sin ella los datos no se pueden recuperar.
 
-## Compilación para Android
+### Conectar la app
 
-Development build local:
+1. En el primer móvil: **Ajustes → Servidor y hogar compartido → Configurar**, o «Crear una cuenta» en la bienvenida.
+2. Escribe la **dirección** del servidor, tu **correo**, una **contraseña** (mínimo 12 caracteres) y el **código de registro**.
+3. **Crea tu hogar.** Lo que ya tuvieras en el móvil se sube al hogar.
+4. Pulsa **Invitar a alguien** y pasa el código de invitación a cada familiar. Vale 24 horas y para una sola persona. En su móvil: crear cuenta con el código de registro y luego **Unirme** con el código de invitación.
 
-```bash
-cd apps/android
-npx expo prebuild --platform android   # genera android/ (ignorado por git)
-npx expo run:android --variant release # APK de release local (requiere configurar firma)
-```
+Recomendado: en **Mi cuenta y seguridad**, activa la **verificación en dos pasos** con una app autenticadora (Google Authenticator, Aegis…) y guarda los códigos de recuperación.
 
-Con EAS Build (en la nube de Expo; implica subir el código a sus servidores):
+### Mantenimiento
 
-```bash
-npx eas-cli@latest build --platform android --profile preview
-```
+Desde la carpeta `infra/docker`:
 
-La carpeta `android/` se genera a partir de `app.json` y los plugins (Continuous Native Generation): no la edites a mano. **Nunca** subas al repositorio el almacén de claves de firma ni sus contraseñas.
+| Para… | Comando |
+|---|---|
+| Ver la dirección y el código de registro | `./stocky.sh datos` |
+| Ver si todo funciona | `./stocky.sh estado` |
+| Actualizar a la última versión | `./stocky.sh actualizar` |
+| Cambiar la IP, el puerto, el dominio o el túnel | `./stocky.sh configurar` |
+| Copia de seguridad cifrada | `./stocky.sh copia` |
+| Ver los registros | `./stocky.sh logs` |
+| Parar / arrancar / reiniciar | `./stocky.sh parar` · `arrancar` · `reiniciar` |
+| Quitar la verificación en dos pasos a quien perdió el móvil | `docker compose exec api python -m app.cli reset-mfa` |
+| Cambiar la contraseña de alguien que la olvidó | `docker compose exec api python -m app.cli reset-password` |
 
-El identificador de paquete `com.stoky.app` (escrito con el nombre anterior) es provisional: cambiarlo hace que Android trate la app como otra distinta (la versión instalada no se actualiza y sus datos no se trasladan). Debe fijarse el definitivo antes de publicar en Google Play, porque después no puede cambiarse.
+Guía completa (copias automáticas, restauración, cortafuegos y problemas frecuentes): [docs/servidor-docker.md](docs/servidor-docker.md).
+
+### Cómo se protegen los datos
+
+- **Conexión:** con dominio o túnel, va cifrada con HTTPS. Con la IP de casa va sin cifrar dentro de tu red; la app lo avisa y solo lo permite con direcciones de red local.
+- **Almacenamiento:** el inventario, las listas, los correos y los nombres se guardan **cifrados** (AES-256) en la base de datos. Aunque alguien copie la base de datos, sin las claves de `secrets/` no puede leerla.
+- **Contraseñas:** nunca se guardan en claro. Hay límite de intentos y verificación en dos pasos opcional.
+- **Aislamiento:** cada hogar solo ve sus datos. La base de datos no está expuesta a Internet.
 
 ## Privacidad
 
-- Datos solo en el dispositivo; copias de seguridad automáticas de Android desactivadas.
-- Sin analítica, publicidad ni registros con datos personales.
-- Única comunicación externa de la app: el código de barras a Open Food Facts, con consentimiento.
-- Ver [docs/legal/](docs/legal/README.md).
+- **Sin servidor**, todo se queda en tu móvil. Las copias de seguridad automáticas de Android están desactivadas para Stocky.
+- **Conexiones externas**, solo estas:
+  - el **código de barras** a Open Food Facts, si das permiso;
+  - una consulta diaria a **GitHub** para avisarte de versiones nuevas, que se desactiva en Ajustes;
+  - **tu servidor**, si lo configuras.
+- **Sin publicidad**, analítica ni rastreadores.
+- **Borrar datos:** desde Ajustes puedes borrar todos los datos del móvil.
+
+Más detalles en [docs/legal](docs/legal/README.md). Los fallos de seguridad se comunican en privado: [SECURITY.md](SECURITY.md).
 
 ## Licencia
 
-Stocky es **software libre de código abierto** bajo la [licencia MIT](LICENSE): se puede usar, copiar, modificar y redistribuir libremente, conservando el aviso de copyright y de licencia. Los componentes de terceros conservan sus propias licencias (ver [docs/legal/licencias-de-terceros.md](docs/legal/licencias-de-terceros.md)). Datos de productos: Open Food Facts, licencia ODbL.
+Stocky es **código abierto** bajo la [licencia MIT](LICENSE). Los componentes de terceros mantienen sus licencias ([detalle](docs/legal/licencias-de-terceros.md)). Los datos de productos proceden de Open Food Facts (licencia ODbL).
