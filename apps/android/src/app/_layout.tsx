@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { AppProvider, useApp } from '../state/AppProvider';
 import { SyncProvider } from '../state/SyncProvider';
+import { UpdateProvider } from '../state/UpdateProvider';
 import { AppearanceProvider, useTheme } from '../ui/theme';
 import { LockGate } from '../ui/LockGate';
 import { ToastProvider } from '../ui/toast';
@@ -28,7 +29,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AppProvider>
         <SyncProvider>
-          <ThemedApp />
+          <UpdateProvider>
+            <ThemedApp />
+          </UpdateProvider>
         </SyncProvider>
       </AppProvider>
     </SafeAreaProvider>

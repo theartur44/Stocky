@@ -15,6 +15,7 @@ Aplicación Android para gestionar el inventario de alimentos de casa: fechas de
 - Sugerencias de recetas calculadas en el dispositivo, priorizando lo que vence antes.
 - Estilo «cristal», seis colores a elegir y modo claro/oscuro/automático; componentes accesibles; textos en español (preparado para catalán e inglés).
 - Bienvenida al instalar: **invitado** (todo en el móvil) o **iniciar sesión** en tu servidor.
+- **Aviso de nuevas versiones**: al publicar una release en GitHub se compila el APK y la app avisa para descargarlo ([docs/publicar-version.md](docs/publicar-version.md)).
 - **Hogar compartido opcional** con tu propio servidor (IP de casa o dominio): cuentas con **verificación en dos pasos**, invitaciones y sincronización automática entre móviles, también sin conexión. Desbloqueo con **huella** opcional. Instalación del servidor con Docker en un paso: [docs/servidor-docker.md](docs/servidor-docker.md).
 - Borrado completo de datos desde Ajustes.
 

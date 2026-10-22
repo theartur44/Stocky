@@ -1,7 +1,9 @@
 name: APK Android (pruebas)
 
 # Compila un APK instalable para PROBAR la app en un dispositivo.
-# Está firmado con la clave de depuración de la plantilla: no sirve para Google Play.
+# Se firma con la clave propia si está configurada (secrets ANDROID_*, ver
+# docs/publicar-version.md), para poder instalarlo encima de una versión
+# publicada; si no, con la clave de pruebas de la plantilla.
 # Solo se lanza a mano (Actions → APK Android (pruebas) → Run workflow), para
 # compilar únicamente la última versión y no un APK por cada cambio.
 on:
@@ -47,10 +49,22 @@ jobs:
       - name: Generar proyecto nativo (expo prebuild)
         run: npx expo prebuild --platform android --no-install --clean
 
+      - name: Clave de firma (si está configurada)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/stocky-release.keystore"
+            echo "STOCKY_KEYSTORE=$RUNNER_TEMP/stocky-release.keystore" >> "$GITHUB_ENV"
+          fi
+
       - name: Compilar APK release
         working-directory: apps/android/android
         env:
           NODE_ENV: production
+          STOCKY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          STOCKY_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          STOCKY_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
 
       - name: Información del APK

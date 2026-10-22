@@ -5,11 +5,14 @@ import { useEffect, useState } from 'react';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
 import { THEME_COLORS, THEME_MODES, type ThemeColor } from '../domain/appearance';
+import { isNewerVersion } from '../domain/version';
 import { t } from '../i18n';
 import { authenticate, canLock } from '../integrations/biometrics';
 import * as notifications from '../integrations/notifications';
 import { useApp } from '../state/AppProvider';
 import { useSync } from '../state/SyncProvider';
+import { CURRENT_VERSION, useUpdates } from '../state/UpdateProvider';
+import { useToast } from '../ui/toast';
 import { errorMessage } from '../state/errors';
 import type { Settings } from '../services/settingsService';
 import { Body, Button, Card, ChipGroup, Notice, PressableScale, Screen, SwitchRow, Title } from '../ui/components';
@@ -75,6 +78,15 @@ const MINUTES_OPTIONS = [0, 20, 30, 45, 60].map((m) => ({
 export default function SettingsScreen() {
   const { services, settings, syncNotifications } = useApp();
   const sync = useSync();
+  const updates = useUpdates();
+  const toast = useToast();
+
+  const checkUpdates = async () => {
+    const latest = await updates.checkNow();
+    if (!latest) toast(t('updates.unavailable'), { tone: 'warning' });
+    else if (isNewerVersion(latest.version, CURRENT_VERSION)) toast(t('updates.found', { version: latest.version }), { icon: 'arrow-down-circle' });
+    else toast(t('updates.upToDate'), { icon: 'checkmark-circle' });
+  };
   const [lockAvailable, setLockAvailable] = useState(true);
   useEffect(() => {
     void canLock().then(setLockAvailable);
@@ -171,7 +183,11 @@ export default function SettingsScreen() {
 
       <Card>
         <Title>{t('settings.notifications')}</Title>
-        <SwitchRow label={t('settings.notificationsEnabled')} value={settings.notificationsEnabled} onChange={(v) => void toggleNotifications(v)} />
+        <SwitchRow
+          label={t('settings.notificationsEnabled')}
+          value={settings.notificationsEnabled}
+          onChange={(v) => void toggleNotifications(v)}
+        />
         <ChipGroup
           label={t('settings.warnDays')}
           options={WARN_OPTIONS}
@@ -207,7 +223,11 @@ export default function SettingsScreen() {
 
       <Card>
         <Title>{t('settings.recipes')}</Title>
-        <SwitchRow label={t('settings.vegetarian')} value={settings.recipeVegetarian} onChange={(v) => void update({ recipeVegetarian: v })} />
+        <SwitchRow
+          label={t('settings.vegetarian')}
+          value={settings.recipeVegetarian}
+          onChange={(v) => void update({ recipeVegetarian: v })}
+        />
         <ChipGroup
           label={t('settings.maxMinutes')}
           options={MINUTES_OPTIONS}
@@ -225,6 +245,27 @@ export default function SettingsScreen() {
       <Card>
         <Title>{t('settings.about')}</Title>
         <Body>{t('settings.version', { version: Constants.expoConfig?.version ?? '—' })}</Body>
+        {updates.available ? (
+          <Button
+            label={t('updates.bannerTitle', { version: updates.available.version })}
+            icon="download-outline"
+            onPress={() => void Linking.openURL(updates.available!.apkUrl)}
+          />
+        ) : null}
+        <SwitchRow
+          label={t('updates.setting')}
+          help={t('updates.settingHelp')}
+          value={settings.updateCheck}
+          onChange={(v) => void update({ updateCheck: v })}
+        />
+        <Button
+          label={t('updates.checkNow')}
+          icon="refresh"
+          variant="secondary"
+          compact
+          onPress={() => void checkUpdates()}
+          loading={updates.checking}
+        />
         <Body muted small>
           {t('settings.license')}
         </Body>

@@ -100,6 +100,10 @@ Los datos se guardan en el almacenamiento privado de la app, protegido por el ai
 
 Stocky no solicita alergias, intolerancias ni otros datos de salud. Las recetas y avisos son orientativos y **no** constituyen consejo médico ni nutricional.
 
+## 11 bis. Aviso de nuevas versiones
+
+Una vez al día, al abrir la app, Stocky consulta en GitHub (servicio de GitHub, Inc., [VERIFICAR ubicación y política de privacidad de GitHub]) el número de la última versión publicada para avisarte si hay una nueva. La petición no incluye ningún dato tuyo ni del inventario; como en cualquier conexión, GitHub recibe la dirección IP. Puedes desactivarlo en Ajustes → Acerca de → «Avisar de nuevas versiones». Se informa de ello en la pantalla de bienvenida.
+
 ## 12. Sincronización con un servidor (opcional)
 
 La app permite conectar, de forma **opcional y desactivada por defecto**, un servidor de sincronización para compartir el inventario y las listas entre los móviles de un hogar. Stocky no ofrece un servidor propio: lo instala y gestiona **quien lo configura** (por ejemplo, un miembro de la familia en su equipo), que pasa a ser responsable de los datos que guarda. [REVISAR por un profesional: escenario C de `docs/legal/README.md`.]

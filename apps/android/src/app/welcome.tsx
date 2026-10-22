@@ -67,6 +67,7 @@ export default function WelcomeScreen() {
             <Button label={t('welcome.guest')} icon="arrow-forward" variant="secondary" onPress={() => void guest()} />
           </Glass>
         </FadeIn>
+        <Text style={[styles.note, { color: colors.textMuted }]}>{t('updates.welcomeNote')}</Text>
       </ScrollView>
     </View>
   );
@@ -81,5 +82,6 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: font.body, textAlign: 'center', lineHeight: 22, maxWidth: 320 },
   card: { padding: spacing.lg, gap: spacing.md },
   optionHead: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
+  note: { fontSize: 12, textAlign: 'center', lineHeight: 17, paddingHorizontal: spacing.md },
   optionText: { flex: 1, fontSize: font.small + 1, lineHeight: 19 },
 });

@@ -481,6 +481,21 @@ export const es = {
     deleted: 'Cuenta borrada.',
     codeField: 'Código de verificación',
   },
+  updates: {
+    bannerTitle: 'Nueva versión {version} disponible',
+    bannerBody: 'Descárgala e instálala encima: tus datos se conservan.',
+    download: 'Descargar',
+    notes: 'Novedades',
+    later: 'Más tarde',
+    setting: 'Avisar de nuevas versiones',
+    settingHelp:
+      'Una vez al día se consulta en GitHub el número de la última versión publicada. La petición no lleva datos tuyos (GitHub ve la IP, como cualquier web).',
+    checkNow: 'Buscar actualizaciones',
+    upToDate: 'Tienes la última versión.',
+    found: 'Hay una versión nueva: {version}.',
+    unavailable: 'No se ha podido comprobar (sin conexión o sin versiones publicadas).',
+    welcomeNote: 'Stocky consulta GitHub una vez al día para avisarte de nuevas versiones. Puedes desactivarlo en Ajustes.',
+  },
   security: {
     title: 'Seguridad',
     biometric: 'Desbloquear con huella',

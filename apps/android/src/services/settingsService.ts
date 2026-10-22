@@ -1,5 +1,6 @@
 import { settingsRepo } from '../data/repositories';
 import { isThemeColor, isThemeMode, type ThemeColor, type ThemeMode } from '../domain/appearance';
+import type { ReleaseInfo } from '../integrations/updates';
 import { nowIso, type ServiceContext } from './context';
 
 export type ConsentState = 'unknown' | 'granted' | 'denied';
@@ -32,6 +33,13 @@ export interface Settings {
   welcomeDone: boolean;
   /** Pedir huella (o el bloqueo del móvil) al abrir la app. */
   biometricLock: boolean;
+  /** Consultar en GitHub, una vez al día, si hay una versión nueva. */
+  updateCheck: boolean;
+  updateCheckedAt: string | null;
+  /** Última versión publicada conocida (para avisar sin conexión). */
+  updateLatest: ReleaseInfo | null;
+  /** Versión cuyo aviso se ha cerrado («Más tarde»). */
+  updateDismissed: string | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -47,6 +55,10 @@ export const DEFAULT_SETTINGS: Settings = {
   themeMode: 'system',
   welcomeDone: false,
   biometricLock: false,
+  updateCheck: true,
+  updateCheckedAt: null,
+  updateLatest: null,
+  updateDismissed: null,
 };
 
 type Validator<K extends keyof Settings> = (v: unknown) => v is Settings[K];
@@ -54,6 +66,13 @@ type Validator<K extends keyof Settings> = (v: unknown) => v is Settings[K];
 const isInt = (min: number, max: number) => (v: unknown): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
 const isBool = (v: unknown): v is boolean => typeof v === 'boolean';
+const isOptString = (v: unknown): v is string | null => v === null || (typeof v === 'string' && v.length <= 200);
+const isRelease = (v: unknown): v is ReleaseInfo | null =>
+  v === null ||
+  (typeof v === 'object' &&
+    ['version', 'pageUrl', 'apkUrl'].every((k) => typeof (v as Record<string, unknown>)[k] === 'string' && ((v as Record<string, unknown>)[k] as string).length <= 500) &&
+    (v as ReleaseInfo).pageUrl.startsWith('https://github.com/') &&
+    (v as ReleaseInfo).apkUrl.startsWith('https://github.com/'));
 
 const VALIDATORS: { [K in keyof Settings]: Validator<K> } = {
   warnDays: isInt(0, 30),
@@ -68,6 +87,10 @@ const VALIDATORS: { [K in keyof Settings]: Validator<K> } = {
   themeMode: isThemeMode,
   welcomeDone: isBool,
   biometricLock: isBool,
+  updateCheck: isBool,
+  updateCheckedAt: isOptString,
+  updateLatest: isRelease,
+  updateDismissed: isOptString,
 };
 
 /** Interpreta los valores guardados; los desconocidos o corruptos vuelven al valor por defecto. */

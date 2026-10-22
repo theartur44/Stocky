@@ -95,11 +95,17 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "./plugins/withReleaseSigning"
     ],
     "experiments": {
       "typedRoutes": false
     },
-    "primaryColor": "#1E7A45"
+    "primaryColor": "#1E7A45",
+    "extra": {
+      "updates": {
+        "repo": "theartur44/Stocky"
+      }
+    }
   }
 }

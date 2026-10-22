@@ -43,7 +43,7 @@ Y la lista completa de `docs/legal/lista-de-verificacion-legal.md`.
 
 ## 3. APK de pruebas
 
-El flujo `.github/workflows/android-apk.yml` compila un APK en GitHub Actions solo cuando se lanza a mano (*Actions → APK Android (pruebas) → Run workflow*), para compilar únicamente la última versión. La CI (tests y tipos) sí se ejecuta en cada cambio. El artefacto `stocky-apk-<commit>` contiene:
+El flujo `.github/workflows/android-apk.yml` compila un APK de pruebas en GitHub Actions solo cuando se lanza a mano; las versiones publicadas se hacen con una release (ver [publicar-version.md](publicar-version.md)) (*Actions → APK Android (pruebas) → Run workflow*), para compilar únicamente la última versión. La CI (tests y tipos) sí se ejecuta en cada cambio. El artefacto `stocky-apk-<commit>` contiene:
 
 - `app-release.apk`: APK para arm64-v8a, armeabi-v7a y x86_64 (móviles y emuladores).
 - `app-release.apk.sha256`: suma de comprobación.
@@ -96,6 +96,9 @@ Usar un dispositivo o emulador Android 10+ con una development build (`npx expo 
 | A4 | Mi cuenta → Sesiones abiertas → cerrar otro móvil | Ese móvil deja de sincronizar y pide volver a entrar |
 | A5 | Ajustes → Seguridad → Desbloquear con huella | Pide la huella para activarlo; al reabrir la app o volver tras más de un minuto pide la huella (o el PIN del móvil) |
 | A6 | Huella activada y se quita el bloqueo de pantalla del móvil | La app no deja al usuario fuera |
+| U1 | Publicar una release `vX.Y.Z` (repositorio público) y abrir una versión anterior | Aviso «Nueva versión X disponible» en Inicio; «Descargar» abre el APK; tras instalarlo encima los datos siguen ahí |
+| U2 | Cerrar el aviso con la X | No vuelve a salir hasta la siguiente versión; sigue en Ajustes → Acerca de |
+| U3 | Desactivar «Avisar de nuevas versiones» | No se hace ninguna petición a GitHub |
 
 ## 5. Cómo informar y reproducir errores (sin datos personales)
 

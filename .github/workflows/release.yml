@@ -1,0 +1,102 @@
+name: Publicar versión
+
+# Al publicar una release en GitHub (Releases → Draft a new release, etiqueta
+# vX.Y.Z), compila el APK con ese número de versión y lo adjunta a la release.
+# La app avisa de la nueva versión en cuanto el APK está adjunto.
+#
+# También se puede lanzar a mano (Actions → Publicar versión → Run workflow)
+# indicando la versión: entonces crea la release y adjunta el APK.
+#
+# Firma: si existen los secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+# ANDROID_KEY_ALIAS y ANDROID_KEY_PASSWORD se firma con esa clave propia
+# (ver docs/publicar-version.md); si no, con la clave de pruebas.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión a publicar (p. ej. v0.2.0)'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/android/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Número de versión desde la etiqueta
+        id: version
+        run: node scripts/set-app-version.mjs "$TAG" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Dependencias y comprobaciones
+        working-directory: apps/android
+        run: |
+          npm ci
+          npm run typecheck
+          npm test -- --ci
+
+      - name: Generar proyecto nativo
+        working-directory: apps/android
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Clave de firma (si está configurada)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/stocky-release.keystore"
+            echo "STOCKY_KEYSTORE=$RUNNER_TEMP/stocky-release.keystore" >> "$GITHUB_ENV"
+            echo "Se firmará con la clave propia."
+          else
+            echo "::warning::Sin clave propia: el APK se firma con la clave de pruebas (ver docs/publicar-version.md)."
+          fi
+
+      - name: Compilar APK
+        working-directory: apps/android/android
+        env:
+          NODE_ENV: production
+          STOCKY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          STOCKY_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          STOCKY_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+
+      - name: Preparar fichero
+        id: apk
+        run: |
+          name="stocky-${{ steps.version.outputs.version }}.apk"
+          cp apps/android/android/app/build/outputs/apk/release/app-release.apk "$name"
+          sha256sum "$name" > "$name.sha256"
+          rm -f "$RUNNER_TEMP/stocky-release.keystore"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Crear la release (lanzamiento manual)
+        if: github.event_name == 'workflow_dispatch'
+        run: gh release create "$TAG" --target "$GITHUB_SHA" --title "Stocky ${{ steps.version.outputs.version }}" --generate-notes
+
+      - name: Adjuntar el APK a la release
+        run: gh release upload "$TAG" "${{ steps.apk.outputs.name }}" "${{ steps.apk.outputs.name }}.sha256" --clobber
