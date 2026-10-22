@@ -41,7 +41,8 @@ services:
     restart: unless-stopped
     environment:
       STOCKY_ENV: production
-      STOCKY_ALLOWED_HOSTS: ${STOCKY_ADDRESS},localhost
+      # Dirección del servidor y, si hay túnel con HTTPS (Cloudflare…), también su dominio.
+      STOCKY_ALLOWED_HOSTS: ${STOCKY_ADDRESS},localhost,${STOCKY_TUNNEL_DOMAIN:-localhost}
       STOCKY_REGISTRATION: ${STOCKY_REGISTRATION:-invite_code}
       STOCKY_JWT_SECRET_FILE: /run/secrets/jwt_secret
       STOCKY_EMAIL_PEPPER_FILE: /run/secrets/email_pepper

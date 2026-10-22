@@ -174,6 +174,8 @@ Con el modo IP solo funciona dentro de tu wifi. Para usarlo fuera sin abrir puer
 - **Tailscale** (VPN privada): instala Tailscale en el servidor y en los móviles y usa el nombre `*.ts.net` con HTTPS de Tailscale como dominio.
 - **Cloudflare Tunnel**: publica el servidor sin abrir puertos; Cloudflare termina el HTTPS.
 
+Con un túnel, instala Stocky en **modo IP** (no en modo dominio: el HTTPS lo pone el túnel) y, cuando el script pregunte por el «Dominio del túnel», escribe su dominio. También se puede añadir después con `./stocky.sh configurar`. El servidor aceptará así la IP de casa y el dominio. En el túnel, apunta el dominio a `http://IP-del-servidor:PUERTO` (o a `http://localhost:PUERTO` si `cloudflared` corre en el mismo equipo). En la app usa el dominio: la conexión irá cifrada.
+
 En ambos casos la conexión va cifrada y en la app se usa la dirección `https://`.
 
 ## Problemas frecuentes

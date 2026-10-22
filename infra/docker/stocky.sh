@@ -52,7 +52,7 @@ is_private_ip() { [[ $1 =~ ^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|127\.)
 suggest_ip() { hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)' | head -n 1 || true; }
 
 ask_address() {
-  local current suggestion address email port
+  local current suggestion address email port tunnel
   current=$(env_get STOCKY_ADDRESS)
   suggestion=${current:-$(suggest_ip)}
   echo
@@ -75,12 +75,25 @@ ask_address() {
       env_set STOCKY_HTTP_PORT "$port"
       # En modo IP no se usa HTTPS: el puerto 443 queda solo en local para no chocar con otros servicios.
       env_set STOCKY_HTTPS_PORT 127.0.0.1:8443
+      echo
+      info "¿Vas a publicarlo además con un túnel que pone el HTTPS (Cloudflare Tunnel, Tailscale Funnel…)?"
+      info "Escribe su dominio (p. ej. stocky.midominio.com) o pulsa Intro si no (se puede añadir después con ./stocky.sh configurar)."
+      read -r -p "Dominio del túnel [$(env_get STOCKY_TUNNEL_DOMAIN)]: " tunnel
+      tunnel=${tunnel:-$(env_get STOCKY_TUNNEL_DOMAIN)}
+      tunnel=${tunnel#https://}
+      tunnel=${tunnel%%/*}
+      if [[ -n $tunnel ]]; then
+        is_domain "$tunnel" || fail "Dominio no válido: $tunnel"
+        env_set STOCKY_TUNNEL_DOMAIN "${tunnel,,}"
+        info "Configura el túnel para que envíe https://${tunnel,,} a http://$address:$port (o a http://localhost:$port si el túnel corre en este mismo equipo)."
+      fi
       break
     elif is_domain "$address"; then
       env_set STOCKY_ADDRESS "${address,,}"
       env_set STOCKY_MODE domain
       env_set STOCKY_HTTP_PORT 80
       env_set STOCKY_HTTPS_PORT 443
+      env_set STOCKY_TUNNEL_DOMAIN ""
       read -r -p "Correo para el certificado HTTPS (Let's Encrypt) [$(env_get ACME_EMAIL)]: " email
       email=${email:-$(env_get ACME_EMAIL)}
       [[ $email =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]] || fail "Correo no válido."
@@ -140,6 +153,7 @@ show_data() {
   echo
   bold "En la app (Ajustes → Servidor y hogar compartido):"
   info "Dirección del servidor:  $(app_url)"
+  [[ -n "$(env_get STOCKY_TUNNEL_DOMAIN)" ]] && info "Desde fuera de casa (túnel): $(env_get STOCKY_TUNNEL_DOMAIN)"
   if [[ "$(env_get STOCKY_REGISTRATION)" != "open" && -s secrets/registration_code ]]; then
     info "Código de registro:      $(cat secrets/registration_code)"
     info "(Compártelo solo con tu familia. La primera persona crea el hogar y luego invita a las demás desde la app.)"
