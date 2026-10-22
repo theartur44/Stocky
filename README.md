@@ -41,7 +41,7 @@ El servidor sirve para que **varios móviles compartan** el inventario y las lis
   curl -fsSL https://get.docker.com | sudo sh
   sudo apt install -y git openssl curl gnupg
   ```
-  > ⚠️ No uses el Docker de **snap**, el que ofrece el instalador de Ubuntu Server. Está aislado y no puede leer carpetas como `/opt`, y la instalación falla con «bind source path does not exist». Compruébalo con `which docker`: si sale `/snap/bin/docker`, instala el oficial con el comando de arriba o pon Stocky dentro de `/home`.
+  > ⚠️ No uses el Docker de **snap**, el que ofrece el instalador de Ubuntu Server. Está aislado y no puede leer carpetas como `/opt`, y la instalación falla con «bind source path does not exist». Compruébalo con `which docker`: si sale `/snap/bin/docker`, instala el oficial con el comando de arriba o pon Stocky dentro de `/home`. Si el error menciona `secrets/` y Docker no es el de snap, faltan las claves: `bash scripts/generate-secrets.sh`.
 
 ### Instalación (3 comandos)
 

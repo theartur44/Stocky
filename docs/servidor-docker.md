@@ -182,6 +182,7 @@ En ambos casos la conexión va cifrada y en la app se usa la dirección `https:/
 
 | Síntoma | Causa probable |
 |---|---|
+| `bind source path does not exist: …/secrets/…` | Faltan las claves. Ejecuta `bash scripts/generate-secrets.sh` (o actualiza y vuelve a lanzar `./stocky.sh`, que ya las comprueba siempre). Si además sale `/snap/bin/docker` en `which docker`, es el Docker de snap: ver el README |
 | La app dice «No se puede conectar con el servidor» | El móvil no está en la misma wifi (modo IP), la dirección o el puerto no son los que muestra `./stocky.sh datos`, o el cortafuegos del servidor bloquea el puerto |
 | Funcionaba y deja de conectar tras reiniciar el router | La IP del servidor ha cambiado: resérvala en el router y ejecuta `./stocky.sh configurar` |
 | «En esa dirección no hay un servidor de Stocky» | Otro servicio usa ese puerto; elige otro con `./stocky.sh configurar` |

@@ -162,11 +162,28 @@ show_data() {
   echo
 }
 
+# Genera las claves que falten (no toca las que ya existen) y comprueba que están todas
+# antes de arrancar: sin ellas Docker falla con «bind source path does not exist».
+ensure_secrets() {
+  local f missing=()
+  # Con una base de datos ya creada, regenerar estas claves dejaría los datos ilegibles o inaccesibles.
+  if docker volume inspect stocky_db-data >/dev/null 2>&1; then
+    for f in data_keys postgres_password; do
+      [[ -s "secrets/$f" ]] || fail "Falta secrets/$f pero ya existe la base de datos de Stocky. No se genera una nueva porque los datos quedarían inaccesibles: restaura la carpeta secrets/ desde tu copia de seguridad."
+    done
+  fi
+  bash scripts/generate-secrets.sh | sed -n '/^  [+]/p'
+  for f in postgres_password jwt_secret email_pepper data_keys registration_code db_ca.crt db_server.crt db_server.key; do
+    [[ -s "secrets/$f" ]] || missing+=("$f")
+  done
+  ((${#missing[@]} == 0)) || fail "Faltan claves en ./secrets: ${missing[*]}. Ejecuta: bash scripts/generate-secrets.sh"
+}
+
 cmd_install() {
   need
   ensure_env
   bold "Generando secretos (solo la primera vez)…"
-  bash scripts/generate-secrets.sh | sed -n '/^  [+=]/p'
+  ensure_secrets
   bold "Construyendo y arrancando los contenedores…"
   compose up -d --build
   wait_healthy || true
@@ -179,8 +196,9 @@ case "${1:-instalar}" in
   instalar | install) cmd_install ;;
   configurar)
     need
-    [[ -f "$ENV_FILE" ]] || cp .env.example "$ENV_FILE"
+    [[ -f "$ENV_FILE" ]] || { cp .env.example "$ENV_FILE"; chmod 600 "$ENV_FILE"; }
     ask_address
+    ensure_secrets
     compose up -d --build --remove-orphans
     wait_healthy || true
     show_data
@@ -188,6 +206,7 @@ case "${1:-instalar}" in
   actualizar | update)
     need
     git pull --ff-only
+    ensure_secrets
     compose up -d --build --remove-orphans
     wait_healthy || true
     docker image prune -f >/dev/null
@@ -198,9 +217,9 @@ case "${1:-instalar}" in
     ;;
   datos) show_data ;;
   logs) compose logs -f --tail 100 ;;
-  reiniciar) compose up -d --force-recreate ;;
+  reiniciar) ensure_secrets && compose up -d --force-recreate ;;
   parar) compose stop ;;
-  arrancar) compose up -d ;;
+  arrancar) ensure_secrets && compose up -d ;;
   copia | backup) bash scripts/backup.sh ;;
   -h | --help | ayuda) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//' ;;
   *) fail "Comando desconocido: $1 (usa ./stocky.sh ayuda)" ;;
