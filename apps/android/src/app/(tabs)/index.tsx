@@ -31,6 +31,7 @@ import {
 } from '../../ui/components';
 import { expiryLabel, qty } from '../../ui/format';
 import { usePlaces } from '../../ui/places';
+import { FirstSteps } from '../../ui/FirstSteps';
 import { LotActions } from '../../ui/stockActions';
 import { font, radius, spacing, useTheme, withAlpha } from '../../ui/theme';
 import { useToast } from '../../ui/toast';
@@ -52,7 +53,8 @@ export default function HomeScreen() {
     const list = await services.shopping.ensureDefaultList();
     const dashboard = await services.inventory.getDashboard(settings.warnDays);
     const items = await services.shopping.items(list.id);
-    return { dashboard, listId: list.id, pending: items.filter((i) => !i.transferredAt && !i.checked).length };
+    const dated = (await services.inventory.listExpiring(toLocalDate(new Date()), 3650)).length > 0;
+    return { dashboard, listId: list.id, pending: items.filter((i) => !i.transferredAt && !i.checked).length, dated };
   }, [services, settings.warnDays]);
 
   if (q.loading) return <LoadingView />;
@@ -134,6 +136,7 @@ export default function HomeScreen() {
 
         <View style={styles.body}>
           <UpdateBanner />
+          <FirstSteps hasDatedLots={q.data.dated} />
           <View style={styles.quickGrid}>
             <QuickAction icon="create-outline" label={t('home.addProduct')} onPress={() => router.push('/product/new')} />
             <QuickAction icon="calendar-outline" label={t('home.quickExpiry')} onPress={() => router.push('/expiring')} />

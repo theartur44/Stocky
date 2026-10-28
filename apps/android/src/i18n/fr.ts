@@ -424,6 +424,20 @@ export const fr: Messages = {
     deleteMessage: 'L’inventaire et les listes de tous les membres sont supprimés du serveur. C’est irréversible. Chaque téléphone garde sa copie.',
     deleted: 'Foyer supprimé du serveur',
   },
+  firstSteps: {
+    notifyTitle: 'Je vous préviens avant que quelque chose périme ?',
+    notifyMessage: 'Stocky peut vous prévenir {days} jours avant. Les rappels n’affichent pas les noms sur l’écran de verrouillage (modifiable dans les Réglages).',
+    enable: 'Activer les rappels',
+    notNow: 'Pas maintenant',
+    next: 'Suivant',
+    gotIt: 'Compris',
+    dismiss: 'Fermer',
+    tips: {
+      scan: { title: 'Scan rapide', body: 'Passez vos courses devant la caméra l’une après l’autre et enregistrez-les toutes d’un coup.' },
+      fefo: { title: 'D’abord ce qui périme en premier', body: 'Quand vous utilisez quelque chose, Stocky le retire de l’emballage qui périme en premier.' },
+      actions: { title: 'Un seul geste', body: 'Dans « Dates de péremption », marquez un produit comme terminé, congelez-le ou jetez-le. En cas d’erreur, touchez « Annuler ».' },
+    },
+  },
   settings: {
     title: 'Réglages',
     appearance: 'Apparence',

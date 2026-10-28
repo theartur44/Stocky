@@ -32,6 +32,10 @@ export interface Settings {
   themeMode: ThemeMode;
   /** Idioma elegido; null = todavía no se ha elegido (se pregunta al abrir la app). */
   language: Locale | null;
+  /** Ya se ha propuesto activar los avisos (tras el primer producto con fecha). */
+  notifyPromptDone: boolean;
+  /** Ya se han visto (o cerrado) los consejos de Inicio. */
+  tipsDone: boolean;
   /** Ya se ha elegido en la bienvenida entre invitado o iniciar sesión. */
   welcomeDone: boolean;
   /** Pedir huella (o el bloqueo del móvil) al abrir la app. */
@@ -57,6 +61,8 @@ export const DEFAULT_SETTINGS: Settings = {
   themeColor: 'green',
   themeMode: 'system',
   language: null,
+  notifyPromptDone: false,
+  tipsDone: false,
   welcomeDone: false,
   biometricLock: false,
   updateCheck: true,
@@ -90,6 +96,8 @@ const VALIDATORS: { [K in keyof Settings]: Validator<K> } = {
   themeColor: isThemeColor,
   themeMode: isThemeMode,
   language: (v): v is Locale | null => v === null || isLocale(v),
+  notifyPromptDone: isBool,
+  tipsDone: isBool,
   welcomeDone: isBool,
   biometricLock: isBool,
   updateCheck: isBool,

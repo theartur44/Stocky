@@ -424,6 +424,20 @@ export const en: Messages = {
     deleteMessage: 'The inventory and lists of all members are deleted from the server. This cannot be undone. Each phone keeps its copy.',
     deleted: 'Household deleted from the server',
   },
+  firstSteps: {
+    notifyTitle: 'Shall I remind you before things expire?',
+    notifyMessage: 'Stocky can remind you {days} days before. Reminders do not show product names on the lock screen (you can change this in Settings).',
+    enable: 'Turn on reminders',
+    notNow: 'Not now',
+    next: 'Next',
+    gotIt: 'Got it',
+    dismiss: 'Close',
+    tips: {
+      scan: { title: 'Quick scan', body: 'Pass your groceries in front of the camera one after another and save them all at once.' },
+      fefo: { title: 'What expires first goes first', body: 'When you use something, Stocky takes it from the pack that expires first.' },
+      actions: { title: 'One tap is enough', body: 'In “Expiry dates”, mark something as used up, freeze it or throw it away. If you make a mistake, tap “Undo”.' },
+    },
+  },
   settings: {
     title: 'Settings',
     appearance: 'Appearance',

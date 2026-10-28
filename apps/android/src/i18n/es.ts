@@ -423,6 +423,20 @@ export const es = {
     deleteMessage: 'Se borran del servidor el inventario y las listas de todos los miembros. No se puede deshacer. Cada móvil conserva su copia.',
     deleted: 'Hogar borrado del servidor',
   },
+  firstSteps: {
+    notifyTitle: '¿Te aviso antes de que caduque algo?',
+    notifyMessage: 'Stocky puede avisarte {days} días antes. Los avisos no muestran nombres en la pantalla de bloqueo (se puede cambiar en Ajustes).',
+    enable: 'Activar avisos',
+    notNow: 'Ahora no',
+    next: 'Siguiente',
+    gotIt: 'Entendido',
+    dismiss: 'Cerrar',
+    tips: {
+      scan: { title: 'Escaneo rápido', body: 'Pasa los productos de la compra uno tras otro por la cámara y guárdalos todos de una vez.' },
+      fefo: { title: 'Primero lo que caduca antes', body: 'Al gastar algo, Stocky descuenta primero del envase que caduca antes.' },
+      actions: { title: 'Un toque basta', body: 'En «Caducidades» marca algo como gastado, congélalo o tíralo. Si te equivocas, pulsa «Deshacer».' },
+    },
+  },
   settings: {
     title: 'Ajustes',
     appearance: 'Apariencia',

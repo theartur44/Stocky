@@ -424,6 +424,20 @@ export const pt: Messages = {
     deleteMessage: 'O inventário e as listas de todos os membros são excluídos do servidor. Não dá para desfazer. Cada celular mantém sua cópia.',
     deleted: 'Casa excluída do servidor',
   },
+  firstSteps: {
+    notifyTitle: 'Quer que eu avise antes de algo vencer?',
+    notifyMessage: 'O Stocky pode avisar {days} dias antes. Os avisos não mostram nomes na tela de bloqueio (dá para mudar em Ajustes).',
+    enable: 'Ativar avisos',
+    notNow: 'Agora não',
+    next: 'Próximo',
+    gotIt: 'Entendi',
+    dismiss: 'Fechar',
+    tips: {
+      scan: { title: 'Leitura rápida', body: 'Passe as compras pela câmera uma depois da outra e salve tudo de uma vez.' },
+      fefo: { title: 'Primeiro o que vence antes', body: 'Ao usar algo, o Stocky desconta primeiro da embalagem que vence antes.' },
+      actions: { title: 'Um toque basta', body: 'Em “Validades”, marque algo como usado, congele ou jogue fora. Se errar, toque em “Desfazer”.' },
+    },
+  },
   settings: {
     title: 'Configurações',
     appearance: 'Aparência',
