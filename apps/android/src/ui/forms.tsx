@@ -110,8 +110,8 @@ export function ProductFields({
         keyboardType="number-pad"
         maxLength={48}
       />
-      <ChipGroup label={t('product.category')} options={categoryOptions} value={value.category} onChange={set('category')} />
-      <ChipGroup label={t('product.defaultUnit')} options={unitOptions} value={value.defaultUnit} onChange={set('defaultUnit')} />
+      <ChipGroup label={t('product.category')} options={categoryOptions()} value={value.category} onChange={set('category')} />
+      <ChipGroup label={t('product.defaultUnit')} options={unitOptions()} value={value.defaultUnit} onChange={set('defaultUnit')} />
       <PlacePicker
         label={t('product.defaultLocation')}
         placeId={value.defaultPlaceId}
@@ -246,14 +246,14 @@ export function LotFields({
         keyboardType="decimal-pad"
         maxLength={12}
       />
-      <ChipGroup label={t('lot.unit')} options={unitOptions} value={value.unit} onChange={set('unit')} />
+      <ChipGroup label={t('lot.unit')} options={unitOptions()} value={value.unit} onChange={set('unit')} />
       <PlacePicker
         label={t('lot.location')}
         placeId={value.placeId}
         kind={value.location}
         onChange={(p) => onChange({ ...value, placeId: p.id, location: p.kind })}
       />
-      <ChipGroup label={t('lot.expiryKind')} options={expiryKindOptions} value={value.expiryKind} onChange={set('expiryKind')} />
+      <ChipGroup label={t('lot.expiryKind')} options={expiryKindOptions()} value={value.expiryKind} onChange={set('expiryKind')} />
       <Body muted small>
         {t(`expiryKindHelp.${value.expiryKind}`)}
       </Body>

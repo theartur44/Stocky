@@ -6,7 +6,7 @@ import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
 import { THEME_COLORS, THEME_MODES, type ThemeColor } from '../domain/appearance';
 import { isNewerVersion } from '../domain/version';
-import { t } from '../i18n';
+import { deviceLocale, LOCALE_LIST, LOCALE_NAMES, t } from '../i18n';
 import { authenticate, canLock } from '../integrations/biometrics';
 import * as notifications from '../integrations/notifications';
 import { useApp } from '../state/AppProvider';
@@ -20,7 +20,7 @@ import { ACCENTS, font, spacing, useTheme } from '../ui/theme';
 
 const WARN_OPTIONS = [0, 1, 2, 3, 5, 7].map((d) => ({ value: String(d), label: String(d) }));
 const HOUR_OPTIONS = [8, 9, 12, 18, 20].map((h) => ({ value: String(h), label: `${h}:00` }));
-const MODE_OPTIONS = THEME_MODES.map((m) => ({ value: m, label: t(`settings.themeModes.${m}`) }));
+
 
 /** Muestras de color: círculos con el degradado de cada tema; el elegido lleva un aro y una marca. */
 function ColorPicker({ value, onChange }: { value: ThemeColor; onChange: (c: ThemeColor) => void }) {
@@ -148,11 +148,21 @@ export default function SettingsScreen() {
       {message ? <Notice message={message.text} tone={message.tone} /> : null}
 
       <Card>
+        <Title>{t('language.title')}</Title>
+        <ChipGroup
+          scroll
+          options={LOCALE_LIST.map((l) => ({ value: l, label: LOCALE_NAMES[l] }))}
+          value={settings.language ?? deviceLocale()}
+          onChange={(language) => void update({ language })}
+        />
+      </Card>
+
+      <Card>
         <Title>{t('settings.appearance')}</Title>
         <ColorPicker value={settings.themeColor} onChange={(c) => void update({ themeColor: c })} />
         <ChipGroup
           label={t('settings.themeMode')}
-          options={MODE_OPTIONS}
+          options={THEME_MODES.map((m) => ({ value: m, label: t(`settings.themeModes.${m}`) }))}
           value={settings.themeMode}
           onChange={(m) => void update({ themeMode: m })}
         />

@@ -7,7 +7,7 @@ import { getExpiryStatus, needsAttention } from '../../domain/expiry';
 import type { ProductStockSummary } from '../../domain/models';
 import { normalizeKey } from '../../domain/text';
 import { formatQuantity, type Unit } from '../../domain/units';
-import { t } from '../../i18n';
+import { dateLocale, t } from '../../i18n';
 import { useApp } from '../../state/AppProvider';
 import { errorMessage } from '../../state/errors';
 import { useServiceQuery } from '../../state/hooks';
@@ -87,7 +87,7 @@ export default function InventoryScreen() {
       if (a.nearestExpiry && b.nearestExpiry) return a.nearestExpiry < b.nearestExpiry ? -1 : 1;
       if (a.nearestExpiry) return -1;
       if (b.nearestExpiry) return 1;
-      return a.product.name.localeCompare(b.product.name, 'es');
+      return a.product.name.localeCompare(b.product.name, dateLocale());
     });
   }, [q.data, activeFilter, query, today, settings.warnDays]);
 

@@ -118,7 +118,8 @@ export default function TabsLayout() {
   const [blurTarget, setBlurTarget] = useState<TargetRef | null>(null);
   const registerTarget = useCallback((ref: TargetRef) => setBlurTarget(ref), []);
   const settingsButton = () => <IconButton icon="settings-outline" label={t('settings.title')} onPress={() => router.push('/settings')} />;
-  // Primera apertura: elegir entre invitado o iniciar sesión.
+  // Primera apertura: elegir el idioma y después entre invitado o iniciar sesión.
+  if (settings.language === null) return <Redirect href="/language" />;
   if (!settings.welcomeDone && !sync.status.enabled) return <Redirect href="/welcome" />;
   return (
     <BlurTargetContext.Provider value={registerTarget}>

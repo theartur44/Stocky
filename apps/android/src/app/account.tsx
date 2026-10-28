@@ -3,7 +3,7 @@ import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Linking, Share, StyleSheet, Text, View } from 'react-native';
 
-import { t } from '../i18n';
+import { dateLocale, t } from '../i18n';
 import { useSync } from '../state/SyncProvider';
 import type { Device, Me } from '../sync/api';
 import { Badge, Body, Button, Card, ErrorView, IconButton, ListRow, LoadingView, Notice, Screen, TextField, Title } from '../ui/components';
@@ -281,7 +281,7 @@ function Sessions({ devices, onChange }: { devices: Device[]; onChange: () => vo
   const { api } = useSync();
   const toast = useToast();
   const date = (iso: string) =>
-    new Date(iso).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    new Date(iso).toLocaleString(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const revoke = async (d: Device) => {
     try {
       await api!.revokeDevice(d.id);

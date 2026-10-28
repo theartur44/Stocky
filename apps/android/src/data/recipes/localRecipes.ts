@@ -3,6 +3,8 @@
  * copiados de terceros). Cantidades orientativas.
  */
 import type { Recipe, RecipeProvider } from '../../domain/recipes';
+import { getLocale, type Locale } from '../../i18n';
+import { RECIPE_TRANSLATIONS, type RecipeLocale } from './recipeTranslations';
 
 const g = (n: number) => ({ milli: n * 1000, unit: 'g' as const });
 const ml = (n: number) => ({ milli: n * 1000, unit: 'ml' as const });
@@ -312,7 +314,30 @@ export const LOCAL_RECIPES: Recipe[] = [
   },
 ];
 
+const TRANSLATED: readonly RecipeLocale[] = ['en', 'fr', 'pt'];
+
+/**
+ * Palabras clave de todos los idiomas para cada ingrediente: un producto se
+ * reconoce aunque su nombre esté en otro idioma (p. ej. escaneado en Francia).
+ */
+const ALL_MATCH = LOCAL_RECIPES.map((r) =>
+  r.ingredients.map((ing, i) => [...new Set([...ing.match, ...TRANSLATED.flatMap((l) => RECIPE_TRANSLATIONS[l][r.id]?.match[i] ?? [])])]),
+);
+
+/** Las recetas con los textos del idioma pedido (español si no hay traducción). */
+export function recipesIn(locale: Locale): Recipe[] {
+  return LOCAL_RECIPES.map((r, ri) => {
+    const tr = locale === 'es' ? undefined : RECIPE_TRANSLATIONS[locale][r.id];
+    return {
+      ...r,
+      title: tr?.title ?? r.title,
+      steps: tr?.steps ?? r.steps,
+      ingredients: r.ingredients.map((ing, i) => ({ ...ing, name: tr?.ingredients[i] ?? ing.name, match: ALL_MATCH[ri]![i]! })),
+    };
+  });
+}
+
 export const localRecipeProvider: RecipeProvider = {
   id: 'local',
-  getRecipes: async () => LOCAL_RECIPES,
+  getRecipes: async () => recipesIn(getLocale()),
 };

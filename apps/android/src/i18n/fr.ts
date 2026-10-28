@@ -169,6 +169,7 @@ export const fr: Messages = {
     horizon: '{days} prochains jours et dates dépassées',
   },
   shopping: {
+    defaultListName: 'Liste de courses',
     title: 'Courses',
     addPlaceholder: 'Ajouter un article…',
     quantity: 'Qté',
@@ -203,6 +204,7 @@ export const fr: Messages = {
     doneTitle: 'Déjà à la maison ({count})',
   },
   quickScan: {
+    unnamedProduct: 'Produit …{code}',
     hint: 'Vise les codes-barres, l’un après l’autre',
     tabHint: 'Ouvre le scanner rapide',
     torch: 'Lampe',
@@ -327,6 +329,12 @@ export const fr: Messages = {
     saved: 'Modifications enregistrées',
     deleted: 'Emplacement supprimé',
     lastOne: 'Il doit rester au moins un emplacement.',
+  },
+  language: {
+    title: 'Langue',
+    choose: 'Dans quelle langue voulez-vous utiliser Stocky ?',
+    hint: 'Vous pouvez la changer à tout moment dans les Réglages.',
+    continue: 'Continuer',
   },
   settings: {
     title: 'Réglages',

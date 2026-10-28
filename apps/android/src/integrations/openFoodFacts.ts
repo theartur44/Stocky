@@ -15,12 +15,16 @@ import { AppError } from '../domain/errors';
 import type { Category } from '../domain/models';
 import type { Unit } from '../domain/units';
 import { isSafeImageUrl, LIMITS } from '../domain/validation';
+import { getLocale } from '../i18n';
 
 export const OFF_BASE_URL = 'https://world.openfoodfacts.org';
 const FIELDS = [
   'code',
   'product_name',
   'product_name_es',
+  'product_name_en',
+  'product_name_fr',
+  'product_name_pt',
   'brands',
   'image_front_small_url',
   'categories_tags',
@@ -109,7 +113,8 @@ export function parseOffResponse(barcode: string, httpStatus: number, json: unkn
     throw new AppError('invalid_response', 'Missing product');
   }
   const p = body.product as Record<string, unknown>;
-  const name = cleanExternal(p.product_name_es, LIMITS.name) ?? cleanExternal(p.product_name, LIMITS.name);
+  // El nombre en el idioma de la app, si Open Food Facts lo tiene; si no, el principal.
+  const name = cleanExternal(p[`product_name_${getLocale()}`], LIMITS.name) ?? cleanExternal(p.product_name, LIMITS.name);
   // `brands` puede contener varias marcas separadas por comas: se toma la primera.
   const brand = cleanExternal(typeof p.brands === 'string' ? p.brands.split(',')[0] : null, LIMITS.brand);
   const img = typeof p.image_front_small_url === 'string' ? p.image_front_small_url : null;

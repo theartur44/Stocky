@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toLocalDate } from '../../domain/dates';
 import { defaultShoppingAmount } from '../../domain/inventory';
 import type { Product } from '../../domain/models';
-import { t } from '../../i18n';
+import { dateLocale, t } from '../../i18n';
 import { useApp } from '../../state/AppProvider';
 import { errorMessage } from '../../state/errors';
 import { useServiceQuery } from '../../state/hooks';
@@ -59,7 +59,7 @@ export default function HomeScreen() {
   const { dashboard, pending, listId } = q.data;
   const now = new Date();
   const today = toLocalDate(now);
-  const longDate = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const longDate = now.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
   const dateText = longDate.charAt(0).toUpperCase() + longDate.slice(1);
 
   const addToList = async (product: Product) => {

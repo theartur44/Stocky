@@ -62,3 +62,19 @@ describe('motor de recetas', () => {
     }
   });
 });
+
+describe('recetas en varios idiomas', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { recipesIn } = require('../data/recipes/localRecipes') as typeof import('../data/recipes/localRecipes');
+  it('muestra los textos del idioma y reconoce productos con nombre en cualquier idioma', () => {
+    const fr = recipesIn('fr').find((r) => r.id === 'tortilla-patatas')!;
+    expect(fr.title).not.toBe('Tortilla de patatas');
+    const egg = fr.ingredients[0]!;
+    expect(ingredientMatches(egg, 'Huevos camperos')).toBe(true);
+    expect(ingredientMatches(egg, 'Oeufs frais')).toBe(true);
+    expect(ingredientMatches(egg, 'Free range eggs')).toBe(true);
+    for (const l of ['en', 'fr', 'pt'] as const) {
+      for (const r of recipesIn(l)) expect(r.steps.length).toBeGreaterThan(0);
+    }
+  });
+});

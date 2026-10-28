@@ -169,6 +169,7 @@ export const en: Messages = {
     horizon: 'Next {days} days and expired',
   },
   shopping: {
+    defaultListName: 'Shopping list',
     title: 'Shopping',
     addPlaceholder: 'Add item…',
     quantity: 'Qty',
@@ -203,6 +204,7 @@ export const en: Messages = {
     doneTitle: 'Already at home ({count})',
   },
   quickScan: {
+    unnamedProduct: 'Product …{code}',
     hint: 'Point at the barcodes, one after another',
     tabHint: 'Opens the quick scanner',
     torch: 'Flashlight',
@@ -327,6 +329,12 @@ export const en: Messages = {
     saved: 'Changes saved',
     deleted: 'Place deleted',
     lastOne: 'At least one place must remain.',
+  },
+  language: {
+    title: 'Language',
+    choose: 'Which language do you want to use Stocky in?',
+    hint: 'You can change it at any time in Settings.',
+    continue: 'Continue',
   },
   settings: {
     title: 'Settings',

@@ -19,3 +19,11 @@ describe('entrada rápida de la lista', () => {
     expect(parseQuickAdd('   ')).toBeNull();
   });
 });
+
+describe('entrada rápida en otros idiomas', () => {
+  it('entiende unidades en inglés, francés y portugués', () => {
+    expect(parseQuickAdd('500 grams rice')).toEqual({ name: 'rice', quantityMilli: 500_000, unit: 'g' });
+    expect(parseQuickAdd('lait 2 litres')).toEqual({ name: 'lait', quantityMilli: 2000, unit: 'l' });
+    expect(parseQuickAdd('3 unidade ovo')).toEqual({ name: 'ovo', quantityMilli: 3000, unit: 'unit' });
+  });
+});

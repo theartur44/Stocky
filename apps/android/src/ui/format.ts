@@ -3,6 +3,7 @@ import { getExpiryStatus, type ExpiryKind, type ExpiryStatus } from '../domain/e
 import { CATEGORIES } from '../domain/models';
 import { formatQuantity, UNITS, type Unit } from '../domain/units';
 import { t } from '../i18n';
+import { DEFAULT_LIST_NAME } from '../services/shoppingService';
 import type { Tone } from './components';
 
 export function expiryLabel(
@@ -41,9 +42,14 @@ export function expiryLabel(
 
 export const qty = (milli: number, unit: Unit) => formatQuantity(milli, unit);
 
-export const unitOptions = UNITS.map((u) => ({ value: u, label: t(`units.${u}`) }));
-export const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: t(`categories.${c}`) }));
-export const expiryKindOptions = (['use_by', 'best_before'] as const).map((k) => ({
-  value: k,
-  label: t(`expiryKinds.${k}`),
-}));
+/** Nombre visible de una lista: la lista inicial, sin renombrar, se muestra en el idioma de la app. */
+export const listLabel = (list: { name: string }) => (list.name === DEFAULT_LIST_NAME ? t('shopping.defaultListName') : list.name);
+
+// Funciones (no constantes): se traducen al dibujar, en el idioma elegido en ese momento.
+export const unitOptions = () => UNITS.map((u) => ({ value: u, label: t(`units.${u}`) }));
+export const categoryOptions = () => CATEGORIES.map((c) => ({ value: c, label: t(`categories.${c}`) }));
+export const expiryKindOptions = () =>
+  (['use_by', 'best_before'] as const).map((k) => ({
+    value: k,
+    label: t(`expiryKinds.${k}`),
+  }));

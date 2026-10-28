@@ -6,6 +6,7 @@
  * plano. Escanear de nuevo el mismo código suma una unidad. Nada se guarda en
  * el inventario hasta que el usuario confirma la sesión.
  */
+import { t } from '../i18n';
 import { addDays, type LocalDate } from './dates';
 import type { ExpiryKind } from './expiry';
 import type { Category, Location } from './models';
@@ -74,8 +75,9 @@ export function suggestLocation(category: Category): Location {
   }
 }
 
+/** Nombre provisional de un código sin datos, en el idioma de la app («Producto …0701»). */
 export function placeholderName(code: string): string {
-  return `Producto …${code.slice(-4)}`;
+  return t('quickScan.unnamedProduct', { code: code.slice(-4) });
 }
 
 export interface ResolvedInfo {

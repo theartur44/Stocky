@@ -1,5 +1,6 @@
 import { settingsRepo } from '../data/repositories';
 import { isThemeColor, isThemeMode, type ThemeColor, type ThemeMode } from '../domain/appearance';
+import { isLocale, type Locale } from '../i18n';
 import type { ReleaseInfo } from '../integrations/updates';
 import { nowIso, type ServiceContext } from './context';
 
@@ -29,6 +30,8 @@ export interface Settings {
   themeColor: ThemeColor;
   /** Claro, oscuro o según el sistema. */
   themeMode: ThemeMode;
+  /** Idioma elegido; null = todavía no se ha elegido (se pregunta al abrir la app). */
+  language: Locale | null;
   /** Ya se ha elegido en la bienvenida entre invitado o iniciar sesión. */
   welcomeDone: boolean;
   /** Pedir huella (o el bloqueo del móvil) al abrir la app. */
@@ -53,6 +56,7 @@ export const DEFAULT_SETTINGS: Settings = {
   recipeMaxMinutes: 0,
   themeColor: 'green',
   themeMode: 'system',
+  language: null,
   welcomeDone: false,
   biometricLock: false,
   updateCheck: true,
@@ -85,6 +89,7 @@ const VALIDATORS: { [K in keyof Settings]: Validator<K> } = {
   recipeMaxMinutes: isInt(0, 600),
   themeColor: isThemeColor,
   themeMode: isThemeMode,
+  language: (v): v is Locale | null => v === null || isLocale(v),
   welcomeDone: isBool,
   biometricLock: isBool,
   updateCheck: isBool,

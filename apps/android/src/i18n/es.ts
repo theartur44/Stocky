@@ -168,6 +168,7 @@ export const es = {
     horizon: 'Próximos {days} días y vencidos',
   },
   shopping: {
+    defaultListName: 'Lista de la compra',
     title: 'Compra',
     addPlaceholder: 'Añadir artículo…',
     quantity: 'Cant.',
@@ -202,6 +203,7 @@ export const es = {
     doneTitle: 'Ya en casa ({count})',
   },
   quickScan: {
+    unnamedProduct: 'Producto …{code}',
     hint: 'Apunta a los códigos de barras, uno tras otro',
     tabHint: 'Abre el escáner rápido',
     torch: 'Linterna',
@@ -326,6 +328,12 @@ export const es = {
     saved: 'Cambios guardados',
     deleted: 'Sitio borrado',
     lastOne: 'Tiene que quedar al menos un sitio.',
+  },
+  language: {
+    title: 'Idioma',
+    choose: '¿En qué idioma quieres usar Stocky?',
+    hint: 'Puedes cambiarlo cuando quieras en Ajustes.',
+    continue: 'Continuar',
   },
   settings: {
     title: 'Ajustes',

@@ -7,7 +7,7 @@ import { migrate } from '../data/migrations';
 import type { SqlDatabase } from '../data/sql';
 import { toLocalDate } from '../domain/dates';
 import { planExpiryNotifications } from '../domain/notificationPlan';
-import { t } from '../i18n';
+import { deviceLocale, setLocale, t } from '../i18n';
 import * as notifications from '../integrations/notifications';
 import type { ChangeScope, ServiceContext } from '../services/context';
 import { createInventoryService, type InventoryService } from '../services/inventoryService';
@@ -68,6 +68,8 @@ function buildServices(ctx: ServiceContext): Services {
 // La pantalla de carga (logo) se mantiene hasta que la base de datos está lista.
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 SplashScreen.setOptions({ fade: true, duration: 350 });
+// Hasta leer los ajustes (o si fallan), el idioma del móvil.
+setLocale(deviceLocale());
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<
@@ -80,6 +82,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const onChangeRef = useRef<((scope: ChangeScope) => void) | null>(null);
   const notify = useCallback((scope: ChangeScope) => onChangeRef.current?.(scope), []);
   const [attempt, setAttempt] = useState(0);
+  // El idioma se cambia antes de volver a dibujar con los ajustes nuevos.
+  const applySettings = useCallback((s: Settings) => {
+    setLocale(s.language ?? deviceLocale());
+    setSettings(s);
+  }, []);
 
   const syncNotifications = useCallback(async () => {
     const services = servicesRef.current;
@@ -119,7 +126,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           onChange: (scope) => {
             for (const fn of listeners.current) fn(scope);
             if (scope === 'settings' || scope === 'all') {
-              servicesRef.current?.settings.get().then(setSettings, (e) => logError('settings.reload', e));
+              servicesRef.current?.settings.get().then(applySettings, (e) => logError('settings.reload', e));
             }
             if (scope !== 'shopping') {
               // Agrupa cambios seguidos en una sola reprogramación.
@@ -135,7 +142,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await services.shopping.ensureDefaultList();
         if (cancelled) return;
         notifications.configureNotificationHandler();
-        setSettings(loaded);
+        applySettings(loaded);
         setState({ status: 'ready', services, db });
         void syncNotifications();
       } catch (e) {
@@ -148,7 +155,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (syncTimer.current) clearTimeout(syncTimer.current);
       void opened?.close().catch(() => undefined);
     };
-  }, [attempt, syncNotifications]);
+  }, [attempt, syncNotifications, applySettings]);
 
   useEffect(() => {
     if (state.status !== 'loading') SplashScreen.hideAsync().catch(() => undefined);

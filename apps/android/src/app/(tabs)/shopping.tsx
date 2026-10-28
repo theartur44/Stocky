@@ -31,7 +31,7 @@ import {
   Stepper,
   TextField,
 } from '../../ui/components';
-import { qty } from '../../ui/format';
+import { listLabel, qty } from '../../ui/format';
 import { TAB_BAR, elevation, font, radius, spacing, useTheme } from '../../ui/theme';
 import { useToast } from '../../ui/toast';
 
@@ -135,7 +135,7 @@ export default function ShoppingScreen() {
 
   const deleteList = () => {
     if (lists.length <= 1) return;
-    Alert.alert(t('shopping.deleteList'), t('shopping.deleteListMessage', { name: current.name }), [
+    Alert.alert(t('shopping.deleteList'), t('shopping.deleteListMessage', { name: listLabel(current) }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),
@@ -160,7 +160,7 @@ export default function ShoppingScreen() {
             scroll
             value={current.id}
             onChange={setListId}
-            options={lists.map((l) => ({ value: l.id, label: l.name, icon: 'list' as const }))}
+            options={lists.map((l) => ({ value: l.id, label: listLabel(l), icon: 'list' as const }))}
           />
         ) : null}
 

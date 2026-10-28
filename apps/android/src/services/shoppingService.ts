@@ -15,6 +15,7 @@ import {
 } from '../domain/validation';
 import { nowIso, type ServiceContext } from './context';
 
+/** Nombre con el que se guarda la lista inicial (se muestra traducido; ver `listLabel`). */
 export const DEFAULT_LIST_NAME = 'Lista de la compra';
 
 export interface NewItem {

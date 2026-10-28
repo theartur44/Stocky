@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 
 import { normalizeServerAddress } from '../domain/serverUrl';
-import { t } from '../i18n';
+import { dateLocale, t } from '../i18n';
 import { ConnectError, useSync } from '../state/SyncProvider';
 import { errorText } from '../state/syncErrors';
 import { Body, Button, Card, ChipGroup, Notice, Screen, TextField, Title } from '../ui/components';
@@ -11,7 +11,7 @@ import { font, spacing, useTheme } from '../ui/theme';
 
 function formatTime(iso: string | null): string {
   if (!iso) return t('server.never');
-  return new Date(iso).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export default function ServerScreen() {

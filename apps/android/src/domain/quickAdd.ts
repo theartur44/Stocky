@@ -34,6 +34,26 @@ const UNIT_WORDS: Record<string, Unit> = {
   x: 'unit',
   unidad: 'unit',
   unidades: 'unit',
+  // Inglés, francés y portugués.
+  gram: 'g',
+  grams: 'g',
+  gramme: 'g',
+  grammes: 'g',
+  grama: 'g',
+  gramas: 'g',
+  liter: 'l',
+  liters: 'l',
+  litre: 'l',
+  litres: 'l',
+  unit: 'unit',
+  units: 'unit',
+  pc: 'unit',
+  pcs: 'unit',
+  unite: 'unit',
+  unites: 'unit',
+  unité: 'unit',
+  unités: 'unit',
+  unidade: 'unit',
 };
 
 const NUM = '(\\d{1,6}(?:[.,]\\d{1,3})?)';

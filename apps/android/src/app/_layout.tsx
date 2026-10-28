@@ -5,7 +5,7 @@ import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { t } from '../i18n';
+import { deviceLocale, t } from '../i18n';
 import { AppProvider, useApp } from '../state/AppProvider';
 import { SyncProvider } from '../state/SyncProvider';
 import { UpdateProvider } from '../state/UpdateProvider';
@@ -68,9 +68,11 @@ export default function RootLayout() {
 function ThemedApp() {
   const { settings } = useApp();
   const appearance = useMemo(() => ({ color: settings.themeColor, mode: settings.themeMode }), [settings.themeColor, settings.themeMode]);
+  // Al cambiar de idioma se vuelve a montar todo para que cada texto se traduzca de nuevo.
+  const locale = settings.language ?? deviceLocale();
   return (
     <AppearanceProvider value={appearance}>
-      <Navigation />
+      <Navigation key={locale} />
     </AppearanceProvider>
   );
 }
@@ -115,6 +117,7 @@ function Navigation() {
             <Stack.Screen name="places" options={{ title: t('places.title') }} />
             <Stack.Screen name="server" options={{ title: t('server.title') }} />
             <Stack.Screen name="account" options={{ title: t('account.title') }} />
+            <Stack.Screen name="language" options={{ headerShown: false, animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="product/new" options={{ title: t('product.newTitle') }} />
             <Stack.Screen name="product/[id]" options={{ title: '' }} />
