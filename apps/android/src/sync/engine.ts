@@ -31,6 +31,12 @@ export interface SyncResult {
 }
 
 const PUSH_BATCH = 500;
+/** Tope de páginas por descarga (500 cambios cada una): un servidor que no avanza no cuelga la app. */
+const MAX_PULL_PAGES = 400;
+const ENTITY_ID_RE = /^[0-9A-Za-z-]{1,64}$/;
+
+/** Ya no se está conectado al mismo hogar (se desconectó o se borraron los datos durante la pasada). */
+class SyncCancelled extends Error {}
 
 export function createSyncEngine(opts: {
   db: SqlDatabase;
@@ -48,6 +54,32 @@ export function createSyncEngine(opts: {
 
   async function setApplying(tx: SqlExecutor, on: boolean) {
     await tx.run('UPDATE sync_state SET applying = ? WHERE id = 1', [on ? 1 : 0]);
+  }
+
+  /** Servidor con el que empezó la pasada en curso. */
+  let cycleServer: string | null = null;
+
+  /** Detiene la pasada si mientras tanto se desconectó el móvil (o se borró todo). */
+  async function ensureStillConnected(tx: SqlExecutor) {
+    const st = await tx.get<{ enabled: number; server_url: string | null }>('SELECT enabled, server_url FROM sync_state WHERE id = 1');
+    if (!st?.enabled || st.server_url !== cycleServer) throw new SyncCancelled('Sync disabled during the cycle');
+  }
+
+  /**
+   * Aplica un registro dentro de un punto de guardado: si no cumple las
+   * restricciones locales, se descarta solo ese registro y no la descarga entera
+   * (si no, un dato corrupto bloquearía para siempre la recepción de cambios).
+   */
+  async function guarded(tx: SqlExecutor, fn: () => Promise<void>): Promise<boolean> {
+    await tx.exec('SAVEPOINT sync_record');
+    try {
+      await fn();
+      await tx.exec('RELEASE sync_record');
+      return true;
+    } catch {
+      await tx.exec('ROLLBACK TO sync_record; RELEASE sync_record');
+      return false;
+    }
   }
 
   /** Agrupa la cola en operaciones y las deja preparadas en `sync_pending`. */
@@ -149,6 +181,7 @@ export function createSyncEngine(opts: {
     let applied = 0;
 
     await db.transaction(async (tx) => {
+      await ensureStillConnected(tx);
       // Los padres pueden llegar después que los hijos: las claves foráneas se comprueban al final.
       await tx.exec('PRAGMA defer_foreign_keys = ON');
       await setApplying(tx, true);
@@ -169,11 +202,15 @@ export function createSyncEngine(opts: {
           if (!values) continue;
           if (entity === 'product' && values.barcode) {
             const dup = await tx.get<{ id: string }>('SELECT id FROM products WHERE barcode = ? AND id <> ?', [values.barcode, c.entity_id]);
+            // Al conectar, todo lo local está pendiente de enviar: la fusión se hace igualmente (lo
+            // que colgaba del local pasa al superviviente; solo se pierden los campos del duplicado).
             if (dup && c.entity_id < dup.id) {
-              await tx.run('UPDATE products SET barcode = NULL WHERE id = ?', [dup.id]);
-              await writeRow(tx, entity, c.entity_id, values);
-              await mergeInto(tx, 'product', dup.id, c.entity_id);
-              applied++;
+              const ok = await guarded(tx, async () => {
+                await tx.run('UPDATE products SET barcode = NULL WHERE id = ?', [dup.id]);
+                await writeRow(tx, entity, c.entity_id, values);
+                await mergeInto(tx, 'product', dup.id, c.entity_id);
+              });
+              if (ok) applied++;
               continue;
             }
             // Sobrevive el local: el remoto se guarda sin código de barras hasta que el otro móvil lo fusione.
@@ -185,18 +222,16 @@ export function createSyncEngine(opts: {
               ? null
               : await tx.get<{ id: string }>('SELECT id FROM shopping_lists WHERE name = ? AND id <> ?', [values.name ?? null, c.entity_id]);
             if (dup && c.entity_id < dup.id) {
-              await writeRow(tx, entity, c.entity_id, values);
-              await mergeInto(tx, 'shopping_list', dup.id, c.entity_id);
-              applied++;
+              const ok = await guarded(tx, async () => {
+                await writeRow(tx, entity, c.entity_id, values);
+                await mergeInto(tx, 'shopping_list', dup.id, c.entity_id);
+              });
+              if (ok) applied++;
               continue;
             }
           }
-          try {
-            await writeRow(tx, entity, c.entity_id, values);
-            applied++;
-          } catch {
-            // Registro que no cumple las restricciones locales (p. ej. dato corrupto): se ignora.
-          }
+          // Registro que no cumple las restricciones locales (p. ej. dato corrupto): se ignora.
+          if (await guarded(tx, () => writeRow(tx, entity, c.entity_id, values))) applied++;
         }
       }
 
@@ -232,7 +267,8 @@ export function createSyncEngine(opts: {
     let since = state?.last_rev ?? 0;
     let fullResync = false;
     const changes: RemoteChange[] = [];
-    for (;;) {
+    for (let pages = 0; ; pages++) {
+      if (pages >= MAX_PULL_PAGES) throw new ApiError('server');
       let page;
       try {
         page = await transport.pull(since);
@@ -245,12 +281,16 @@ export function createSyncEngine(opts: {
         }
         throw e;
       }
-      changes.push(...page.changes);
+      // Una respuesta que no avanza o con otra forma es un servidor roto (o manipulado).
+      if (!Array.isArray(page.changes) || typeof page.next !== 'number' || !Number.isSafeInteger(page.next) || page.next < since)
+        throw new ApiError('server');
+      if (page.has_more && page.next === since) throw new ApiError('server');
+      for (const c of page.changes) if (isSyncEntity(c?.entity) && typeof c.entity_id === 'string' && ENTITY_ID_RE.test(c.entity_id)) changes.push(c);
       since = page.next;
       if (!page.has_more) break;
     }
     const applied = changes.length > 0 || fullResync ? await applyChanges(changes, fullResync) : 0;
-    await db.run('UPDATE sync_state SET last_rev = ? WHERE id = 1', [since]);
+    await db.run('UPDATE sync_state SET last_rev = ? WHERE id = 1 AND enabled = 1 AND server_url = ?', [since, cycleServer]);
     return applied;
   }
 
@@ -262,7 +302,10 @@ export function createSyncEngine(opts: {
     pulled += await pull();
     // Las fusiones de duplicados hechas al recibir generan cambios: se envían ya.
     if ((await db.get<{ n: number }>('SELECT COUNT(*) AS n FROM sync_outbox'))!.n > 0) pushed += await push();
-    await db.run('UPDATE sync_state SET last_sync_at = ?, last_error = NULL WHERE id = 1', [clock().toISOString()]);
+    await db.run('UPDATE sync_state SET last_sync_at = ?, last_error = NULL WHERE id = 1 AND enabled = 1 AND server_url = ?', [
+      clock().toISOString(),
+      cycleServer,
+    ]);
     return { pushed, pulled };
   }
 
@@ -290,6 +333,9 @@ export function createSyncEngine(opts: {
 
     /** Desactiva la sincronización. Los datos se quedan en el móvil. */
     async disable() {
+      // Una pasada en curso ya no escribe nada (lo comprueba antes de aplicar), pero se espera a que
+      // acabe para que «Borrar todos los datos» no se cruce con ella.
+      await running?.catch(() => undefined);
       await db.exec(
         `UPDATE sync_state SET enabled = 0, applying = 0, server_url = NULL, account_email = NULL, household_id = NULL,
            household_name = NULL, role = NULL, last_rev = 0, last_sync_at = NULL, last_error = NULL WHERE id = 1;
@@ -302,10 +348,14 @@ export function createSyncEngine(opts: {
     sync(options: { initial?: boolean } = {}): Promise<SyncResult> {
       running ??= (async () => {
         try {
+          const st = await db.get<{ enabled: number; server_url: string | null }>('SELECT enabled, server_url FROM sync_state WHERE id = 1');
+          if (!st?.enabled) return { pushed: 0, pulled: 0 };
+          cycleServer = st.server_url;
           return await cycle(!!options.initial);
         } catch (e) {
+          if (e instanceof SyncCancelled) return { pushed: 0, pulled: 0 };
           await db
-            .run('UPDATE sync_state SET last_error = ? WHERE id = 1', [e instanceof ApiError ? e.code : 'internal'])
+            .run('UPDATE sync_state SET last_error = ? WHERE id = 1 AND enabled = 1', [e instanceof ApiError ? e.code : 'internal'])
             .catch(() => undefined);
           throw e;
         } finally {

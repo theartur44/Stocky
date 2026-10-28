@@ -41,14 +41,13 @@ export async function fetchLatestRelease(repo: string, fetchFn: FetchFn = (i, in
     };
     if (body.draft || body.prerelease || typeof body.tag_name !== 'string' || !parseVersion(body.tag_name)) return null;
     const base = `https://github.com/${repo}/releases/`;
-    const pageUrl = typeof body.html_url === 'string' && body.html_url.startsWith(base) ? body.html_url : null;
+    // Direcciones exactas del propio repositorio: nada de «..» ni otros caminos.
+    const safe = (url: unknown, re: RegExp) => typeof url === 'string' && !url.includes('..') && re.test(url.slice(base.length)) && url.startsWith(base);
+    const pageUrl = safe(body.html_url, /^tag\/[\w.-]+$/) ? (body.html_url as string) : null;
     const apk = (body.assets ?? []).find(
       (a) => typeof a.name === 'string' && a.name.endsWith('.apk') && typeof a.browser_download_url === 'string',
     );
-    const apkUrl =
-      typeof apk?.browser_download_url === 'string' && apk.browser_download_url.startsWith(`${base}download/`)
-        ? apk.browser_download_url
-        : null;
+    const apkUrl = safe(apk?.browser_download_url, /^download\/[\w.-]+\/[\w.-]+\.apk$/) ? (apk!.browser_download_url as string) : null;
     if (!pageUrl || !apkUrl) return null;
     return { version: body.tag_name.replace(/^v/, ''), pageUrl, apkUrl };
   } catch {

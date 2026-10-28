@@ -129,8 +129,9 @@ export default function SettingsScreen() {
         onPress: async () => {
           try {
             await notifications.cancelAll().catch(() => undefined);
-            // Antes de borrar, este móvil se desconecta del hogar: los datos del servidor no se tocan.
-            if (sync.status.enabled || sync.session) await sync.disconnect().catch(() => undefined);
+            // Antes de borrar, este móvil se desconecta del hogar (los datos del servidor no se tocan)
+            // y se borran las credenciales guardadas, aunque no haya una sesión visible.
+            await sync.disconnect().catch(() => undefined);
             await services.privacy.deleteAllData();
             await services.shopping.ensureDefaultList();
             setMessage({ text: t('settings.deleteAllDone'), tone: 'neutral' });

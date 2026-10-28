@@ -535,7 +535,8 @@ export function Stepper({
 
 /** Círculo de color con el icono de la categoría. */
 export function CategoryAvatar({ category, size = 44 }: { category: Category; size?: number }) {
-  const s = CATEGORY_STYLE[category];
+  // Una categoría desconocida (dato de otra versión) no puede romper la pantalla.
+  const s = CATEGORY_STYLE[category] ?? CATEGORY_STYLE.other;
   return (
     <View
       style={{

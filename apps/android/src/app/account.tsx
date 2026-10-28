@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Linking, Share, StyleSheet, Text, View } from 'react-native';
 
@@ -12,6 +13,8 @@ import { errorText } from '../state/syncErrors';
 
 /** Gestión de la cuenta del servidor: verificación en dos pasos, contraseña, sesiones y borrado. */
 export default function AccountScreen() {
+  // Aquí se ven el secreto de la verificación en dos pasos y los códigos de recuperación.
+  usePreventScreenCapture('account');
   const { api } = useSync();
   const [me, setMe] = useState<Me | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -92,6 +95,8 @@ function TwoStep({ me, onChange }: { me: Me; onChange: () => void }) {
 
   const openAuthenticator = async () => {
     try {
+      // Solo enlaces de app autenticadora: el servidor no puede hacer abrir otra cosa.
+      if (!/^otpauth:\/\/totp\//i.test(setup!.uri)) throw new Error('unexpected uri');
       await Linking.openURL(setup!.uri);
     } catch {
       toast(t('account.mfaNoApp'), { tone: 'warning' });

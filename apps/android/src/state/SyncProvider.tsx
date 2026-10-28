@@ -254,6 +254,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         const parsed = normalizeServerAddress(address);
         if (!parsed.ok) throw new ConnectError(parsed.error);
         const { api } = clientFor(parsed.url);
+        let signedIn = false;
         try {
           await api.health();
           if (register) {
@@ -265,19 +266,26 @@ export function SyncProvider({ children }: { children: ReactNode }) {
               return 'needs_mfa';
             }
           }
+          signedIn = true;
           return await afterLogin(parsed.url, parsed.lan);
         } catch (e) {
+          // Sesión abierta pero sin terminar de conectar: se cierra para no dejar credenciales sueltas.
+          if (signedIn) await api.logout().catch(() => undefined);
           throw new ConnectError(e instanceof ApiError ? e.code : 'network');
         }
       },
 
       async verifyMfa(code) {
         if (!mfa) throw new ConnectError('mfa_expired');
+        const { api } = clientFor(mfa.serverUrl);
+        let signedIn = false;
         try {
-          await clientFor(mfa.serverUrl).api.loginMfa(mfa.token, code);
+          await api.loginMfa(mfa.token, code);
+          signedIn = true;
           setMfa(null);
           return await afterLogin(mfa.serverUrl, mfa.lan);
         } catch (e) {
+          if (signedIn) await api.logout().catch(() => undefined);
           if (e instanceof ApiError && e.code === 'mfa_expired') setMfa(null);
           throw new ConnectError(e instanceof ApiError ? e.code : 'network');
         }

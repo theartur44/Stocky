@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { preventScreenCaptureAsync, allowScreenCaptureAsync } from 'expo-screen-capture';
 import { AppState, Image, StyleSheet, Text, View } from 'react-native';
 
 import { t } from '../i18n';
@@ -37,6 +38,15 @@ export function LockGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!enabled) setLocked(false);
+  }, [enabled]);
+
+  // Con el bloqueo activado, Android no muestra el contenido en «Recientes» ni permite capturas.
+  useEffect(() => {
+    if (!enabled) return;
+    preventScreenCaptureAsync('lock').catch(() => undefined);
+    return () => {
+      allowScreenCaptureAsync('lock').catch(() => undefined);
+    };
   }, [enabled]);
 
   useEffect(() => {

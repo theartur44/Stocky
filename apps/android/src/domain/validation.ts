@@ -61,11 +61,14 @@ function isValidQuantity(milli: unknown): milli is number {
 }
 
 /**
- * Solo se aceptan imágenes HTTPS (las de Open Food Facts lo son). Se usa una
- * expresión regular porque la implementación de `URL` de React Native es parcial.
+ * Solo se muestran imágenes de Open Food Facts por HTTPS. Una dirección de
+ * otro sitio (p. ej. puesta por otro móvil del hogar) haría que cada móvil
+ * conectara con él al ver el producto: revelaría su IP o haría peticiones a
+ * aparatos de la red de casa. Se usa una expresión regular porque la
+ * implementación de `URL` de React Native es parcial.
  */
 export function isSafeImageUrl(url: string): boolean {
-  return url.length <= 500 && /^https:\/\/[a-z0-9.-]+(:\d+)?\/[^\s"'<>]*$/i.test(url);
+  return url.length <= 500 && /^https:\/\/(images|static)\.openfoodfacts\.org\/[^\s"'<>?#\\]*$/i.test(url) && !url.includes('..');
 }
 
 export function validateProductInput(input: ProductInput): Required<ProductInput> {

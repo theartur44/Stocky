@@ -62,5 +62,8 @@ describe('aviso de actualizaciones', () => {
       }),
     ).toBeNull();
     expect(await fetchLatestRelease('../../evil', f(release()))).toBeNull();
+    // Sin caminos «..» que salgan del repositorio.
+    const sneaky = 'https://github.com/theartur44/Stocky/releases/download/../../../../evil/x/releases/download/v1/x.apk';
+    expect(await fetchLatestRelease('theartur44/Stocky', f(release({ assets: [{ name: 'x.apk', browser_download_url: sneaky }] })))).toBeNull();
   });
 });

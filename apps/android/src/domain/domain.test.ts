@@ -200,5 +200,23 @@ describe('validación', () => {
     expect(isSafeImageUrl('https://images.openfoodfacts.org/images/products/301/762/401/0701/front_es.jpg')).toBe(true);
     expect(isSafeImageUrl('javascript:alert(1)')).toBe(false);
     expect(isSafeImageUrl('https://x.org/a b')).toBe(false);
+    // Solo Open Food Facts: nada de rastreadores ni aparatos de la red local.
+    expect(isSafeImageUrl('https://tracker.example/p.gif?u=1')).toBe(false);
+    expect(isSafeImageUrl('https://192.168.1.1/cgi-bin/x')).toBe(false);
+    expect(isSafeImageUrl('https://images.openfoodfacts.org.evil.example/x.jpg')).toBe(false);
+    expect(isSafeImageUrl('https://images.openfoodfacts.org:8443/x.jpg')).toBe(false);
+  });
+});
+
+describe('enlaces externos', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { externalPath } = require('../app/+native-intent') as typeof import('../app/+native-intent');
+  it('solo abren Inicio o «Caduca pronto», sin parámetros', () => {
+    expect(externalPath('stocky://expiring')).toBe('/expiring');
+    expect(externalPath('stocky:///expiring?x=%E0%A4%A')).toBe('/expiring');
+    expect(externalPath('stocky://product/new?name=Hola&imageUrl=https://evil.example/x.gif')).toBe('/');
+    expect(externalPath('stocky://scan')).toBe('/');
+    expect(externalPath('stocky://')).toBe('/');
+    expect(externalPath('/expiring#a')).toBe('/expiring');
   });
 });

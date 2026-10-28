@@ -2,6 +2,7 @@ import { useLastNotificationResponse } from 'expo-notifications';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { t } from '../i18n';
@@ -23,6 +24,31 @@ function NotificationNavigation() {
   }, [response]);
   return null;
 }
+
+/**
+ * Si una pantalla falla al dibujarse, se muestra este aviso en lugar de cerrar
+ * la app (sin él, un dato inesperado podía dejarla cerrándose en cada arranque).
+ * Va fuera de los proveedores de tema, así que usa colores fijos.
+ */
+export function ErrorBoundary({ retry }: { error: Error; retry: () => Promise<void> }) {
+  return (
+    <View style={fallback.wrap} accessibilityRole="alert">
+      <Text style={fallback.title}>{t('errors.title')}</Text>
+      <Text style={fallback.body}>{t('errors.generic')}</Text>
+      <Pressable accessibilityRole="button" onPress={() => void retry()} style={fallback.button}>
+        <Text style={fallback.buttonLabel}>{t('common.retry')}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const fallback = StyleSheet.create({
+  wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12, backgroundColor: '#F4F7F5' },
+  title: { fontSize: 22, fontWeight: '800', color: '#14231B' },
+  body: { fontSize: 16, color: '#4A5A51', textAlign: 'center' },
+  button: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14, backgroundColor: '#1F8A5B' },
+  buttonLabel: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
+});
 
 export default function RootLayout() {
   return (
