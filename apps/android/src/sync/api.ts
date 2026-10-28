@@ -42,6 +42,8 @@ export type ApiErrorCode =
   | 'mfa_already_enabled'
   | 'mfa_not_enabled'
   | 'mfa_not_started'
+  | 'last_owner' // el único propietario no puede irse sin nombrar a otro
+  | 'cannot_demote_self'
   | 'server';
 
 export class ApiError extends Error {
@@ -51,6 +53,17 @@ export class ApiError extends Error {
   ) {
     super(`api_error:${code}`);
   }
+}
+
+export type HouseholdRole = 'owner' | 'member' | 'viewer';
+
+export interface Member {
+  userId: string;
+  role: HouseholdRole;
+  joinedAt: string;
+  me: boolean;
+  /** Puede faltar si el servidor es anterior a la 0.2.0. */
+  email: string | null;
 }
 
 export interface HouseholdInfo {
@@ -129,6 +142,8 @@ const DETAIL_CODES: Partial<Record<string, ApiErrorCode>> = {
   mfa_not_enabled: 'mfa_not_enabled',
   mfa_not_started: 'mfa_not_started',
   invalid_credentials: 'invalid_credentials',
+  last_owner: 'last_owner',
+  cannot_demote_self: 'cannot_demote_self',
 };
 
 export function createApiClient(opts: {
@@ -357,6 +372,34 @@ export function createApiClient(opts: {
         body: { role: 'member' },
       });
       return { code: r.code, expiresAt: r.expires_at };
+    },
+
+    async renameHousehold(name: string): Promise<HouseholdInfo> {
+      return toHousehold(await authed('/households/current', { method: 'PATCH', body: { name } }));
+    },
+
+    async members(): Promise<Member[]> {
+      const rows = await authed<{ user_id: string; role: HouseholdRole; joined_at: string; me: boolean; email?: string | null }[]>(
+        '/households/current/members',
+      );
+      return rows.map((m) => ({ userId: m.user_id, role: m.role, joinedAt: m.joined_at, me: m.me, email: m.email ?? null }));
+    },
+
+    async setMemberRole(userId: string, role: HouseholdRole): Promise<void> {
+      await authed(`/households/current/members/${encodeURIComponent(userId)}`, { method: 'PATCH', body: { role } });
+    },
+
+    async removeMember(userId: string): Promise<void> {
+      await authed(`/households/current/members/${encodeURIComponent(userId)}`, { method: 'DELETE' });
+    },
+
+    async leaveHousehold(): Promise<void> {
+      await authed('/households/current/leave', { method: 'POST' });
+    },
+
+    /** Borra el hogar y todos sus datos del servidor (solo el propietario). */
+    async deleteHousehold(): Promise<void> {
+      await authed('/households/current', { method: 'DELETE' });
     },
 
     async push(ops: SyncOpIn[]): Promise<OpResult[]> {

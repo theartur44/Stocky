@@ -114,6 +114,7 @@ function Navigation() {
             <Stack.Screen name="scan" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
             <Stack.Screen name="expiring" options={{ title: t('expiring.title') }} />
             <Stack.Screen name="settings" options={{ title: t('settings.title') }} />
+            <Stack.Screen name="household" options={{ title: t('household.title') }} />
             <Stack.Screen name="history" options={{ title: t('history.title') }} />
             <Stack.Screen name="places" options={{ title: t('places.title') }} />
             <Stack.Screen name="server" options={{ title: t('server.title') }} />

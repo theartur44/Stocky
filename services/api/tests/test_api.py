@@ -148,6 +148,9 @@ def test_only_owner_manages_members(api):
     assert member.delete(f"/households/current/members/{owner.get('/me').json()['user_id']}").status_code == 403
     members = owner.get("/households/current/members").json()
     assert len(members) == 2
+    # Cada miembro se reconoce por su correo (solo dentro del hogar).
+    assert sorted(m["email"] for m in members) == sorted([owner.email, member.email])
+    assert [m["me"] for m in members if m["email"] == owner.email] == [True]
 
 
 def test_viewer_cannot_write(api):

@@ -288,6 +288,7 @@ function Connected() {
         {status.serverOutdated ? <Notice tone="warning" message={t('server.outdated')} /> : null}
         {status.lastError ? <Notice tone="danger" message={errorText(new ConnectError(status.lastError as never))} /> : null}
         <Button label={t('server.syncNow')} icon="sync" onPress={() => void sync.syncNow()} loading={status.syncing} />
+        <Button label={t('household.manage')} icon="people-outline" variant="secondary" onPress={() => router.push('/household')} />
         <Body muted small>
           {t('server.autoSync')}
         </Body>

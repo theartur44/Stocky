@@ -104,4 +104,29 @@ describe('cliente del servidor', () => {
     const api = createApiClient({ baseUrl: 'https://s.test', tokens: memoryTokens(), fetch: async () => json(401, { detail: 'invalid_credentials' }) });
     await expect(api.login('a@b.es', 'x')).rejects.toMatchObject({ code: 'invalid_credentials' });
   });
+
+  it('gestiona el hogar: miembros (con o sin correo), permisos y «último propietario»', async () => {
+    const tokens = memoryTokens({ accessToken: 'a', refreshToken: 'r1-xxxxxxxxxxxxxxxxxxxx' }); // secret-scan: ignore (token ficticio de prueba)
+    const calls: string[] = [];
+    const fetch = jest.fn(async (url: string, init: RequestInit) => {
+      const path = url.replace('https://s.test/api/v1', '');
+      calls.push(`${init.method} ${path}`);
+      if (path === '/households/current/members' && init.method === 'GET')
+        return json(200, [
+          { user_id: 'u1', role: 'owner', joined_at: '2026-10-01T10:00:00+00:00', me: true, email: 'yo@b.es' },
+          { user_id: 'u2', role: 'member', joined_at: '2026-10-02T10:00:00+00:00', me: false },
+        ]);
+      if (path === '/households/current/leave') return json(409, { detail: 'last_owner' });
+      return json(200, { user_id: 'u2', role: 'viewer', joined_at: '', me: false });
+    });
+    const api = createApiClient({ baseUrl: 'https://s.test', tokens, fetch });
+    const members = await api.members();
+    expect(members.map((m) => [m.userId, m.email, m.me])).toEqual([
+      ['u1', 'yo@b.es', true],
+      ['u2', null, false],
+    ]);
+    await api.setMemberRole('u2', 'viewer');
+    await expect(api.leaveHousehold()).rejects.toMatchObject({ code: 'last_owner' });
+    expect(calls).toEqual(['GET /households/current/members', 'PATCH /households/current/members/u2', 'POST /households/current/leave']);
+  });
 });

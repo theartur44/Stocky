@@ -24,7 +24,7 @@ from ..deps import (
     require_role,
     security_log,
 )
-from ..models import Household, Invitation, Membership, SyncRecord
+from ..models import Household, Invitation, Membership, SyncRecord, User
 from ..schemas import (
     HouseholdCreate,
     HouseholdOut,
@@ -154,13 +154,18 @@ def leave(ctx: HouseholdContext = Depends(get_household), db: Session = Depends(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+def _member_out(state: AppState, db: Session, m: Membership, me: bool) -> MemberOut:
+    user = db.get(User, m.user_id)
+    email = state.cipher.decrypt_text(user.email_enc, f"email:{user.id}") if user is not None else None
+    return MemberOut(user_id=m.user_id, role=m.role, joined_at=as_utc(m.joined_at).isoformat(), me=me, email=email)
+
+
 @router.get("/current/members", response_model=list[MemberOut])
-def members(ctx: HouseholdContext = Depends(get_household), db: Session = Depends(get_db)) -> list[MemberOut]:
+def members(
+    ctx: HouseholdContext = Depends(get_household), state: AppState = Depends(get_state), db: Session = Depends(get_db)
+) -> list[MemberOut]:
     rows = db.scalars(select(Membership).where(Membership.household_id == ctx.household.id).order_by(Membership.joined_at))
-    return [
-        MemberOut(user_id=m.user_id, role=m.role, joined_at=as_utc(m.joined_at).isoformat(), me=m.user_id == ctx.auth.user.id)
-        for m in rows
-    ]
+    return [_member_out(state, db, m, m.user_id == ctx.auth.user.id) for m in rows]
 
 
 def _member_of(db: Session, ctx: HouseholdContext, user_id: uuid.UUID) -> Membership:
@@ -175,6 +180,7 @@ def update_member(
     user_id: uuid.UUID,
     body: MemberUpdate,
     ctx: HouseholdContext = Depends(require_role("owner")),
+    state: AppState = Depends(get_state),
     db: Session = Depends(get_db),
 ) -> MemberOut:
     m = _member_of(db, ctx, user_id)
@@ -182,7 +188,7 @@ def update_member(
         raise HTTPException(status.HTTP_409_CONFLICT, detail="cannot_demote_self")
     m.role = body.role
     db.commit()
-    return MemberOut(user_id=m.user_id, role=m.role, joined_at=as_utc(m.joined_at).isoformat(), me=False)
+    return _member_out(state, db, m, m.user_id == ctx.auth.user.id)
 
 
 @router.delete("/current/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -63,6 +63,10 @@ interface SyncContextValue {
   createHousehold(name: string): Promise<void>;
   joinHousehold(code: string): Promise<void>;
   invite(): Promise<{ code: string; expiresAt: string }>;
+  /** Gestión del hogar: renombrar (propietario), salir o borrarlo (propietario). Al salir o borrarlo, los datos se quedan en el móvil. */
+  renameHousehold(name: string): Promise<void>;
+  leaveHousehold(): Promise<void>;
+  deleteHousehold(): Promise<void>;
   syncNow(): Promise<void>;
   disconnect(): Promise<void>;
   cancelSession(): Promise<void>;
@@ -327,6 +331,43 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }
       },
 
+      async renameHousehold(name) {
+        if (!status.serverUrl) throw new ConnectError('unauthorized');
+        try {
+          const h = await clientFor(status.serverUrl).api.renameHousehold(name);
+          await db.run('UPDATE sync_state SET household_name = ? WHERE id = 1', [h.name]);
+          await refreshStatus();
+        } catch (e) {
+          throw new ConnectError(e instanceof ApiError ? e.code : 'network');
+        }
+      },
+
+      async leaveHousehold() {
+        if (!status.serverUrl) throw new ConnectError('unauthorized');
+        const { api, engine } = clientFor(status.serverUrl);
+        try {
+          await api.leaveHousehold();
+        } catch (e) {
+          throw new ConnectError(e instanceof ApiError ? e.code : 'network');
+        }
+        await api.logout();
+        await engine.disable();
+        await refreshStatus();
+      },
+
+      async deleteHousehold() {
+        if (!status.serverUrl) throw new ConnectError('unauthorized');
+        const { api, engine } = clientFor(status.serverUrl);
+        try {
+          await api.deleteHousehold();
+        } catch (e) {
+          throw new ConnectError(e instanceof ApiError ? e.code : 'network');
+        }
+        await api.logout();
+        await engine.disable();
+        await refreshStatus();
+      },
+
       syncNow: () => runSync(),
 
       async disconnect() {
@@ -343,7 +384,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setSession(null);
       },
     }),
-    [status, serverOutdated, session, mfa, clientFor, afterLogin, runSync, refreshStatus],
+    [status, serverOutdated, session, mfa, clientFor, afterLogin, runSync, refreshStatus, db],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

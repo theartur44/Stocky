@@ -176,6 +176,8 @@ class MemberOut(BaseModel):
     role: str
     joined_at: str
     me: bool
+    #: Correo del miembro, para reconocerlo al gestionar el hogar (solo lo ven los del mismo hogar).
+    email: str | None = None
 
 
 class MemberUpdate(Strict):
