@@ -1,20 +1,31 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Animated, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { IconName } from './components';
 import { elevation, font, radius, spacing, useTheme } from './theme';
 
 type Tone = 'success' | 'neutral' | 'warning' | 'danger';
+/** Botón opcional del aviso (p. ej. «Deshacer»). */
+export interface ToastAction {
+  label: string;
+  onPress: () => void;
+}
+interface ToastOptions {
+  tone?: Tone;
+  icon?: IconName;
+  action?: ToastAction;
+}
 interface ToastMessage {
   id: number;
   text: string;
   tone: Tone;
   icon?: IconName;
+  action?: ToastAction;
 }
 
-const ToastContext = createContext<(text: string, opts?: { tone?: Tone; icon?: IconName }) => void>(() => undefined);
+const ToastContext = createContext<(text: string, opts?: ToastOptions) => void>(() => undefined);
 
 /** Muestra un aviso breve en la parte inferior. */
 export function useToast() {
@@ -30,18 +41,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const seq = useRef(0);
 
   const show = useCallback(
-    (text: string, opts?: { tone?: Tone; icon?: IconName }) => {
+    (text: string, opts?: ToastOptions) => {
       const id = ++seq.current;
-      setMsg({ id, text, tone: opts?.tone ?? 'success', icon: opts?.icon });
+      setMsg({ id, text, tone: opts?.tone ?? 'success', icon: opts?.icon, action: opts?.action });
       AccessibilityInfo.announceForAccessibility(text);
       anim.stopAnimation();
       Animated.spring(anim, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 8 }).start();
       if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => {
-        Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
-          setMsg((m) => (m?.id === id ? null : m));
-        });
-      }, 2200);
+      timer.current = setTimeout(
+        () => {
+          Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+            setMsg((m) => (m?.id === id ? null : m));
+          });
+        },
+        // Con botón, más tiempo para pulsarlo.
+        opts?.action ? 6000 : 2200,
+      );
     },
     [anim],
   );
@@ -58,7 +73,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {children}
         {msg ? (
           <Animated.View
-            pointerEvents="none"
+            pointerEvents={msg.action ? 'box-none' : 'none'}
             style={[
               styles.toast,
               elevation(colors, 3),
@@ -76,6 +91,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <Text style={{ color: colors.text, fontSize: font.body, fontWeight: '600', flex: 1 }} numberOfLines={2}>
               {msg.text}
             </Text>
+            {msg.action ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={msg.action.label}
+                hitSlop={10}
+                onPress={() => {
+                  const action = msg.action;
+                  setMsg(null);
+                  action?.onPress();
+                }}
+              >
+                <Text style={{ color: colors.primary, fontWeight: '800', fontSize: font.body }}>{msg.action.label}</Text>
+              </Pressable>
+            ) : null}
           </Animated.View>
         ) : null}
       </View>

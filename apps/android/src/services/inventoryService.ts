@@ -1,4 +1,5 @@
-import { lotRepo, productRepo } from '../data/repositories';
+import { eventRepo, lotRepo, placeRepo, productRepo, type StockEvent } from '../data/repositories';
+import type { SqlExecutor } from '../data/sql';
 import { addDays, toLocalDate, type LocalDate } from '../domain/dates';
 import { AppError } from '../domain/errors';
 import { getExpiryStatus, needsAttention } from '../domain/expiry';
@@ -14,6 +15,16 @@ import {
   type ProductInput,
 } from '../domain/validation';
 import { nowIso, type ServiceContext } from './context';
+
+/** Días que se estima que dura algo al congelarlo (se puede corregir en el lote). */
+export const FREEZE_DAYS = 90;
+
+export interface ConsumeResult {
+  /** Para deshacer la acción desde el aviso o el historial. */
+  batchId: string;
+  /** Ya no queda nada de ese producto. */
+  productEmpty: boolean;
+}
 
 export interface Dashboard {
   productsInStock: number;
@@ -31,6 +42,70 @@ function isUniqueViolation(e: unknown): boolean {
 export function createInventoryService(ctx: ServiceContext) {
   const { db } = ctx;
   const changed = () => ctx.onChange?.('inventory');
+
+  /** Anota en el historial lo que se gasta o se tira de un lote. */
+  async function record(
+    tx: SqlExecutor,
+    batchId: string,
+    kind: StockEvent['kind'],
+    lot: StockLot,
+    takeMilli: number,
+  ): Promise<void> {
+    const product = await productRepo.get(tx, lot.productId);
+    const now = ctx.clock();
+    const status = getExpiryStatus(lot, toLocalDate(now), 0);
+    await eventRepo.insert(tx, {
+      id: ctx.newId(),
+      batchId,
+      kind,
+      productId: lot.productId,
+      productName: product?.name ?? '?',
+      category: product?.category ?? 'other',
+      quantityMilli: takeMilli,
+      unit: lot.unit,
+      expired: status === 'expired' || status === 'best_before_passed',
+      lot,
+      day: toLocalDate(now),
+      at: now.toISOString(),
+    });
+  }
+
+  async function requireLot(tx: SqlExecutor, id: string): Promise<StockLot> {
+    const lot = await lotRepo.get(tx, id);
+    if (!lot) throw new AppError('not_found', 'Lot not found');
+    return lot;
+  }
+
+  /** Cambia un lote de sitio; opcionalmente con fecha nueva (p. ej. al congelarlo). */
+  async function moveLot(lotId: string, placeId: string, newExpiry?: { date: LocalDate; kind: 'use_by' | 'best_before' } | null): Promise<void> {
+    await db.transaction(async (tx) => {
+      const lot = await requireLot(tx, lotId);
+      const place = (await placeRepo.list(tx)).find((p) => p.id === placeId);
+      if (!place) throw new AppError('not_found', 'Place not found');
+      const next = {
+        ...lot,
+        placeId: place.id,
+        location: place.kind,
+        ...(newExpiry ? { expiryDate: newExpiry.date, expiryKind: newExpiry.kind, expiryEstimated: true } : {}),
+      };
+      await lotRepo.update(tx, lot.id, validateLotInput(next), nowIso(ctx));
+    });
+    changed();
+  }
+
+  async function consumeFromLot(lotId: string, amountMilli: number, unit: Unit): Promise<ConsumeResult & { remainingMilli: number }> {
+    assertValidQuantity(amountMilli);
+    const batchId = ctx.newId();
+    const result = await db.transaction(async (tx) => {
+      const lot = await requireLot(tx, lotId);
+      const [step] = planConsumption([lot], amountMilli, unit);
+      await record(tx, batchId, 'consumed', lot, step!.takeMilli);
+      const remainingMilli = await applyStep(tx, lot.quantityMilli, step!);
+      return { remainingMilli, productEmpty: (await lotRepo.listByProduct(tx, lot.productId)).length === 0 };
+    });
+    changed();
+    return { batchId, ...result };
+  }
 
   async function requireProduct(id: string): Promise<Product> {
     const p = await productRepo.get(db, id);
@@ -139,29 +214,116 @@ export function createInventoryService(ctx: ServiceContext) {
      * Devuelve la cantidad restante en la unidad del lote.
      */
     async consumeLot(lotId: string, amountMilli: number, unit: Unit): Promise<number> {
-      assertValidQuantity(amountMilli);
-      const remaining = await db.transaction(async (tx) => {
-        const lot = await lotRepo.get(tx, lotId);
-        if (!lot) throw new AppError('not_found', 'Lot not found');
-        const [step] = planConsumption([lot], amountMilli, unit);
-        return applyStep(tx, lot.quantityMilli, step!);
-      });
-      changed();
-      return remaining;
+      return (await consumeFromLot(lotId, amountMilli, unit)).remainingMilli;
     },
 
+    /** Como `consumeLot`, con lo necesario para deshacer y saber si se ha acabado el producto. */
+    consumeFromLot,
+
     /** Consume de los lotes de un producto en orden FEFO. Todo o nada. */
-    async consumeProduct(productId: string, amountMilli: number, unit: Unit): Promise<void> {
-      await db.transaction(async (tx) => {
+    async consumeProduct(productId: string, amountMilli: number, unit: Unit): Promise<ConsumeResult> {
+      const batchId = ctx.newId();
+      const productEmpty = await db.transaction(async (tx) => {
         const lots = await lotRepo.listByProduct(tx, productId);
         if (lots.length === 0) throw new AppError('insufficient_quantity', 'No stock');
         const steps = planConsumption(lots, amountMilli, unit);
         for (const step of steps) {
           const lot = lots.find((l) => l.id === step.lotId)!;
+          await record(tx, batchId, 'consumed', lot, step.takeMilli);
           await applyStep(tx, lot.quantityMilli, step);
         }
+        return (await lotRepo.listByProduct(tx, productId)).length === 0;
       });
       changed();
+      return { batchId, productEmpty };
+    },
+
+    /** Se ha gastado el lote entero. */
+    async finishLot(lotId: string): Promise<ConsumeResult> {
+      const batchId = ctx.newId();
+      const productEmpty = await db.transaction(async (tx) => {
+        const lot = await requireLot(tx, lotId);
+        await record(tx, batchId, 'consumed', lot, lot.quantityMilli);
+        await lotRepo.delete(tx, lot.id);
+        return (await lotRepo.listByProduct(tx, lot.productId)).length === 0;
+      });
+      changed();
+      return { batchId, productEmpty };
+    },
+
+    /** Se tira el lote entero (queda en el historial como desperdicio). */
+    async discardLot(lotId: string): Promise<ConsumeResult> {
+      const batchId = ctx.newId();
+      const productEmpty = await db.transaction(async (tx) => {
+        const lot = await requireLot(tx, lotId);
+        await record(tx, batchId, 'discarded', lot, lot.quantityMilli);
+        await lotRepo.delete(tx, lot.id);
+        return (await lotRepo.listByProduct(tx, lot.productId)).length === 0;
+      });
+      changed();
+      return { batchId, productEmpty };
+    },
+
+    /** Tira todo lo que ya ha caducado («consumir antes de» pasado). Devuelve cuántos lotes. */
+    async discardExpired(): Promise<{ batchId: string; count: number }> {
+      const batchId = ctx.newId();
+      const today = toLocalDate(ctx.clock());
+      const count = await db.transaction(async (tx) => {
+        const lots = (await lotRepo.listWithExpiryUntil(tx, addDays(today, -1))).filter(
+          (l) => getExpiryStatus(l, today, 0) === 'expired',
+        );
+        for (const lot of lots) {
+          await record(tx, batchId, 'discarded', lot, lot.quantityMilli);
+          await lotRepo.delete(tx, lot.id);
+        }
+        return lots.length;
+      });
+      if (count > 0) changed();
+      return { batchId, count };
+    },
+
+    /**
+     * Marca como abierto. Si el producto dice cuánto dura abierto, la fecha pasa
+     * a ser la de apertura más esos días (si es antes que la impresa). De un lote
+     * de varias unidades se abre solo una, que queda como lote aparte.
+     */
+    async openLot(lotId: string): Promise<{ lotId: string; expiryChanged: boolean }> {
+      const result = await db.transaction(async (tx) => {
+        const lot = await requireLot(tx, lotId);
+        if (lot.openedOn) return { lotId, expiryChanged: false };
+        const product = await productRepo.get(tx, lot.productId);
+        const today = toLocalDate(ctx.clock());
+        const now = nowIso(ctx);
+        const openExpiry = product?.openDays ? addDays(today, product.openDays) : null;
+        const expiryChanged = openExpiry !== null && (lot.expiryDate === null || openExpiry < lot.expiryDate);
+        const opened = {
+          ...lot,
+          openedOn: today,
+          ...(expiryChanged ? { expiryDate: openExpiry, expiryKind: 'use_by' as const, expiryEstimated: true } : {}),
+        };
+        if (lot.unit === 'unit' && lot.quantityMilli > 1000) {
+          if ((await lotRepo.setQuantity(tx, lot.id, lot.quantityMilli, lot.quantityMilli - 1000, now)) !== 1) {
+            throw new AppError('conflict', 'Lot changed concurrently');
+          }
+          const id = ctx.newId();
+          await lotRepo.insert(tx, id, lot.productId, { ...validateLotInput({ ...opened, quantityMilli: 1000 }) }, now);
+          return { lotId: id, expiryChanged };
+        }
+        await lotRepo.update(tx, lot.id, validateLotInput(opened), now);
+        return { lotId, expiryChanged };
+      });
+      changed();
+      return result;
+    },
+
+    moveLot,
+
+    /** Al congelador (el primero de la lista), con una fecha estimada de unos meses. */
+    async freezeLot(lotId: string): Promise<void> {
+      const freezer = (await placeRepo.list(db)).find((p) => p.kind === 'freezer');
+      if (!freezer) throw new AppError('validation', 'No freezer', { place: 'places.noFreezer' });
+      const today = toLocalDate(ctx.clock());
+      await moveLot(lotId, freezer.id, { date: addDays(today, FREEZE_DAYS), kind: 'best_before' });
     },
 
     listSummaries,

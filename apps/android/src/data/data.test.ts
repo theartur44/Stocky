@@ -15,6 +15,7 @@ describe('migraciones de SQLite', () => {
       'settings',
       'shopping_items',
       'shopping_lists',
+      'stock_events',
       'stock_lots',
       'sync_outbox',
       'sync_pending',

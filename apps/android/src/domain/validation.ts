@@ -6,6 +6,8 @@ import { isCategory, isLocation, type Category, type Location } from './models';
 import { cleanText } from './text';
 import { isUnit, MAX_QUANTITY_MILLI, type Unit } from './units';
 
+export const MAX_OPEN_DAYS = 365;
+
 export const LIMITS = {
   name: 120,
   brand: 80,
@@ -25,6 +27,8 @@ export interface ProductInput {
   defaultPlaceId?: string | null;
   lowStockThresholdMilli?: number | null;
   packQuantityMilli?: number | null;
+  /** Días que dura una vez abierto (1-365). */
+  openDays?: number | null;
   imageUrl?: string | null;
   source?: 'manual' | 'openfoodfacts';
   notes?: string | null;
@@ -42,6 +46,7 @@ export interface LotInput {
   expiryEstimated?: boolean;
   lotCode?: string | null;
   notes?: string | null;
+  openedOn?: LocalDate | null;
 }
 
 type Errors = Record<string, string>;
@@ -99,6 +104,9 @@ export function validateProductInput(input: ProductInput): Required<ProductInput
   let imageUrl = input.imageUrl ?? null;
   if (imageUrl !== null && !isSafeImageUrl(imageUrl)) imageUrl = null;
 
+  const openDays = input.openDays ?? null;
+  if (openDays !== null && !(Number.isInteger(openDays) && openDays >= 1 && openDays <= MAX_OPEN_DAYS)) errors.openDays = 'errors.invalidValue';
+
   if (Object.keys(errors).length > 0) throw new AppError('validation', 'Invalid product input', errors);
 
   return {
@@ -111,6 +119,7 @@ export function validateProductInput(input: ProductInput): Required<ProductInput
     defaultPlaceId: isPlaceId(input.defaultPlaceId) ? input.defaultPlaceId : null,
     lowStockThresholdMilli: threshold,
     packQuantityMilli: pack,
+    openDays,
     imageUrl,
     source: input.source === 'openfoodfacts' ? 'openfoodfacts' : 'manual',
     notes,
@@ -128,6 +137,8 @@ export function validateLotInput(input: LotInput): Required<LotInput> {
   if (!isExpiryKind(input.expiryKind)) errors.expiryKind = 'errors.invalidValue';
   const lotCode = optionalText(input.lotCode, LIMITS.lotCode, 'lotCode', errors);
   const notes = optionalText(input.notes, LIMITS.notes, 'notes', errors);
+  const openedOn = input.openedOn ?? null;
+  if (openedOn !== null && !isValidLocalDate(openedOn)) errors.openedOn = 'errors.invalidDate';
 
   if (Object.keys(errors).length > 0) throw new AppError('validation', 'Invalid lot input', errors);
 
@@ -142,6 +153,7 @@ export function validateLotInput(input: LotInput): Required<LotInput> {
     expiryEstimated: expiryDate !== null && input.expiryEstimated === true,
     lotCode,
     notes,
+    openedOn,
   };
 }
 

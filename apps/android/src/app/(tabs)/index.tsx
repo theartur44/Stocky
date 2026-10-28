@@ -31,6 +31,7 @@ import {
 } from '../../ui/components';
 import { expiryLabel, qty } from '../../ui/format';
 import { usePlaces } from '../../ui/places';
+import { LotActions } from '../../ui/stockActions';
 import { font, radius, spacing, useTheme, withAlpha } from '../../ui/theme';
 import { useToast } from '../../ui/toast';
 
@@ -137,7 +138,7 @@ export default function HomeScreen() {
             <QuickAction icon="create-outline" label={t('home.addProduct')} onPress={() => router.push('/product/new')} />
             <QuickAction icon="calendar-outline" label={t('home.quickExpiry')} onPress={() => router.push('/expiring')} />
             <QuickAction icon="restaurant-outline" label={t('home.recipes')} onPress={() => router.push('/recipes')} />
-            <QuickAction icon="cart-outline" label={t('tabs.shopping')} onPress={() => router.push('/shopping')} />
+            <QuickAction icon="time-outline" label={t('history.title')} onPress={() => router.push('/history')} />
           </View>
 
           <SectionHeader
@@ -166,6 +167,7 @@ export default function HomeScreen() {
                       right={<Badge label={e.label} tone={e.tone} />}
                       onPress={() => router.push({ pathname: '/product/[id]', params: { id: lot.productId } })}
                     />
+                    <LotActions lot={lot} productName={lot.product.name} compact />
                   </FadeIn>
                 );
               })

@@ -256,6 +256,7 @@ export default function SettingsScreen() {
       <Card>
         <Title>{t('settings.data')}</Title>
         <Body muted>{t('settings.dataInfo')}</Body>
+        <Button label={t('history.title')} icon="time-outline" variant="secondary" onPress={() => router.push('/history')} />
         <Button label={t('settings.deleteAll')} icon="trash-outline" variant="danger" onPress={deleteAll} />
       </Card>
 

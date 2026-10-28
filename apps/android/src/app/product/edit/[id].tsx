@@ -31,6 +31,7 @@ export default function EditProductScreen() {
         defaultPlaceId: p.defaultPlaceId,
         lowStock: p.lowStockThresholdMilli ? formatMilli(p.lowStockThresholdMilli) : '',
         pack: p.packQuantityMilli ? formatMilli(p.packQuantityMilli) : '',
+        openDays: p.openDays ? String(p.openDays) : '',
         notes: p.notes ?? '',
         imageUrl: p.imageUrl,
         source: p.source,

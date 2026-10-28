@@ -111,6 +111,7 @@ interface ProductRow {
   default_place_id: string | null;
   low_stock_threshold_milli: number | null;
   pack_quantity_milli: number | null;
+  open_days: number | null;
   image_url: string | null;
   source: string;
   notes: string | null;
@@ -130,6 +131,7 @@ function toProduct(r: ProductRow): Product {
     defaultPlaceId: r.default_place_id ?? null,
     lowStockThresholdMilli: r.low_stock_threshold_milli,
     packQuantityMilli: r.pack_quantity_milli ?? null,
+    openDays: r.open_days ?? null,
     imageUrl: r.image_url,
     source: r.source as ProductSource,
     notes: r.notes,
@@ -142,8 +144,8 @@ export const productRepo = {
   async insert(db: SqlExecutor, id: string, p: Required<ProductInput>, now: string): Promise<Product> {
     await db.run(
       `INSERT INTO products (id, name, name_key, brand, barcode, category, default_unit, default_location, default_place_id,
-         low_stock_threshold_milli, pack_quantity_milli, image_url, source, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         low_stock_threshold_milli, pack_quantity_milli, open_days, image_url, source, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         p.name,
@@ -155,6 +157,7 @@ export const productRepo = {
         ...(await resolvePlace(db, p.defaultPlaceId, p.defaultLocation)),
         p.lowStockThresholdMilli,
         p.packQuantityMilli,
+        p.openDays,
         p.imageUrl,
         p.source,
         p.notes,
@@ -168,7 +171,7 @@ export const productRepo = {
   async update(db: SqlExecutor, id: string, p: Required<ProductInput>, now: string): Promise<number> {
     const r = await db.run(
       `UPDATE products SET name = ?, name_key = ?, brand = ?, barcode = ?, category = ?, default_unit = ?,
-         default_location = ?, default_place_id = ?, low_stock_threshold_milli = ?, pack_quantity_milli = ?, image_url = ?,
+         default_location = ?, default_place_id = ?, low_stock_threshold_milli = ?, pack_quantity_milli = ?, open_days = ?, image_url = ?,
          source = ?, notes = ?, updated_at = ?
        WHERE id = ?`,
       [
@@ -181,6 +184,7 @@ export const productRepo = {
         ...(await resolvePlace(db, p.defaultPlaceId, p.defaultLocation)),
         p.lowStockThresholdMilli,
         p.packQuantityMilli,
+        p.openDays,
         p.imageUrl,
         p.source,
         p.notes,
@@ -233,6 +237,7 @@ interface LotRow {
   expiry_estimated: number;
   lot_code: string | null;
   notes: string | null;
+  opened_on: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -257,6 +262,7 @@ function toLot(r: LotRow): StockLot {
     expiryEstimated: r.expiry_estimated === 1,
     lotCode: r.lot_code,
     notes: r.notes,
+    openedOn: (r.opened_on ?? null) as LocalDate | null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -269,8 +275,8 @@ export const lotRepo = {
   async insert(db: SqlExecutor, id: string, productId: string, l: Required<LotInput>, now: string): Promise<StockLot> {
     await db.run(
       `INSERT INTO stock_lots (id, product_id, quantity_milli, unit, location, place_id, added_on, expiry_date, expiry_kind,
-         expiry_estimated, lot_code, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         expiry_estimated, lot_code, notes, opened_on, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         productId,
@@ -283,6 +289,7 @@ export const lotRepo = {
         l.expiryEstimated ? 1 : 0,
         l.lotCode,
         l.notes,
+        l.openedOn,
         now,
         now,
       ],
@@ -293,7 +300,7 @@ export const lotRepo = {
   async update(db: SqlExecutor, id: string, l: Required<LotInput>, now: string): Promise<number> {
     const r = await db.run(
       `UPDATE stock_lots SET quantity_milli = ?, unit = ?, location = ?, place_id = ?, added_on = ?, expiry_date = ?,
-         expiry_kind = ?, expiry_estimated = ?, lot_code = ?, notes = ?, updated_at = ?
+         expiry_kind = ?, expiry_estimated = ?, lot_code = ?, notes = ?, opened_on = ?, updated_at = ?
        WHERE id = ?`,
       [
         l.quantityMilli,
@@ -305,6 +312,7 @@ export const lotRepo = {
         l.expiryEstimated ? 1 : 0,
         l.lotCode,
         l.notes,
+        l.openedOn,
         now,
         id,
       ],
@@ -354,6 +362,94 @@ export const lotRepo = {
 
   async delete(db: SqlExecutor, id: string): Promise<number> {
     return (await db.run('DELETE FROM stock_lots WHERE id = ?', [id])).changes;
+  },
+};
+
+// ---------------------------------------------------------------- historial
+
+/** Algo que se gastó o se tiró (historial de este móvil). */
+export interface StockEvent {
+  id: string;
+  /** Las entradas de una misma acción (p. ej. gastar de dos lotes) comparten `batchId`. */
+  batchId: string;
+  kind: 'consumed' | 'discarded';
+  productId: string;
+  productName: string;
+  category: Category;
+  /** Cantidad en la unidad del lote. */
+  quantityMilli: number;
+  unit: Unit;
+  /** Ya había pasado su fecha. */
+  expired: boolean;
+  /** El lote tal como estaba antes (para deshacer). */
+  lot: StockLot;
+  day: LocalDate;
+  at: string;
+}
+
+interface EventRow {
+  id: string;
+  batch_id: string;
+  kind: string;
+  product_id: string;
+  product_name: string;
+  category: string;
+  quantity_milli: number;
+  unit: string;
+  expired: number;
+  lot_json: string;
+  day: string;
+  at: string;
+}
+
+function toEvent(r: EventRow): StockEvent {
+  return {
+    id: r.id,
+    batchId: r.batch_id,
+    kind: r.kind as StockEvent['kind'],
+    productId: r.product_id,
+    productName: r.product_name,
+    category: r.category as Category,
+    quantityMilli: r.quantity_milli,
+    unit: r.unit as Unit,
+    expired: r.expired === 1,
+    lot: JSON.parse(r.lot_json) as StockLot,
+    day: r.day as LocalDate,
+    at: r.at,
+  };
+}
+
+export const eventRepo = {
+  async insert(db: SqlExecutor, e: StockEvent): Promise<void> {
+    await db.run(
+      `INSERT INTO stock_events (id, batch_id, kind, product_id, product_name, category, quantity_milli, unit, expired, lot_json, day, at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [e.id, e.batchId, e.kind, e.productId, e.productName, e.category, e.quantityMilli, e.unit, e.expired ? 1 : 0, JSON.stringify(e.lot), e.day, e.at],
+    );
+  },
+
+  async list(db: SqlExecutor, limit = 300): Promise<StockEvent[]> {
+    return (await db.all<EventRow>('SELECT * FROM stock_events ORDER BY at DESC, id LIMIT ?', [limit])).map(toEvent);
+  },
+
+  async byBatch(db: SqlExecutor, batchId: string): Promise<StockEvent[]> {
+    return (await db.all<EventRow>('SELECT * FROM stock_events WHERE batch_id = ?', [batchId])).map(toEvent);
+  },
+
+  async deleteBatch(db: SqlExecutor, batchId: string): Promise<number> {
+    return (await db.run('DELETE FROM stock_events WHERE batch_id = ?', [batchId])).changes;
+  },
+
+  /** Cuántos productos se gastaron y se tiraron desde `fromDay` (cada acción cuenta una vez). */
+  async summary(db: SqlExecutor, fromDay: LocalDate): Promise<{ consumed: number; discarded: number; expired: number }> {
+    const r = await db.get<{ consumed: number; discarded: number; expired: number }>(
+      `SELECT COUNT(DISTINCT CASE WHEN kind = 'consumed' THEN batch_id || product_id END) AS consumed,
+              COUNT(DISTINCT CASE WHEN kind = 'discarded' THEN batch_id || product_id END) AS discarded,
+              COUNT(DISTINCT CASE WHEN kind = 'discarded' AND expired = 1 THEN batch_id || product_id END) AS expired
+       FROM stock_events WHERE day >= ?`,
+      [fromDay],
+    );
+    return { consumed: r?.consumed ?? 0, discarded: r?.discarded ?? 0, expired: r?.expired ?? 0 };
   },
 };
 
@@ -568,6 +664,7 @@ export async function deleteAllUserData(db: SqlExecutor): Promise<void> {
      DELETE FROM stock_lots;
      DELETE FROM products;
      DELETE FROM places;
+     DELETE FROM stock_events;
      DELETE FROM settings;`,
   );
   // Vuelven los sitios iniciales.

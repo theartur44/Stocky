@@ -37,6 +37,8 @@ export interface Product {
   lowStockThresholdMilli: number | null;
   /** Contenido de un envase en milésimas de `defaultUnit` (null si se cuenta por unidades o no se sabe). */
   packQuantityMilli: number | null;
+  /** Días que dura una vez abierto (leche, salsas…); null si no se indica. */
+  openDays: number | null;
   imageUrl: string | null;
   source: ProductSource;
   notes: string | null;
@@ -61,6 +63,8 @@ export interface StockLot {
   expiryEstimated: boolean;
   /** Código de lote del fabricante, si el usuario lo anota. */
   lotCode: string | null;
+  /** Día en que se abrió (null = cerrado). */
+  openedOn: LocalDate | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;

@@ -29,6 +29,7 @@ import {
 } from '../../ui/components';
 import { expiryLabel, qty } from '../../ui/format';
 import { PLACE_ICONS, placeLabel, usePlaces } from '../../ui/places';
+import { useStockFeedback } from '../../ui/stockActions';
 import { font, radius, spacing, useTheme } from '../../ui/theme';
 import { useToast } from '../../ui/toast';
 
@@ -61,6 +62,7 @@ export default function InventoryScreen() {
   const { services, settings } = useApp();
   const { colors } = useTheme();
   const toast = useToast();
+  const feedback = useStockFeedback();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('in_stock');
   const q = useServiceQuery(() => services.inventory.listSummaries(), [services], ['inventory']);
@@ -98,8 +100,8 @@ export default function InventoryScreen() {
     const amount = quickConsumeAmount(s);
     if (!amount) return;
     try {
-      await services.inventory.consumeProduct(s.product.id, amount.milli, amount.unit);
-      toast(t('inventory.consumed', { name: s.product.name, amount: formatQuantity(amount.milli, amount.unit) }), { icon: 'remove-circle' });
+      const r = await services.inventory.consumeProduct(s.product.id, amount.milli, amount.unit);
+      feedback(t('inventory.consumed', { name: s.product.name, amount: formatQuantity(amount.milli, amount.unit) }), r, s.product);
     } catch (e) {
       toast(errorMessage(e), { tone: 'danger' });
     }

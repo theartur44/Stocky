@@ -27,6 +27,7 @@ import {
 } from '../../ui/components';
 import { expiryLabel, qty } from '../../ui/format';
 import { usePlaces } from '../../ui/places';
+import { LotActions, useStockFeedback } from '../../ui/stockActions';
 import { spacing } from '../../ui/theme';
 
 export default function ProductDetailScreen() {
@@ -135,6 +136,7 @@ export default function ProductDetailScreen() {
                   lot.expiryDate ? t(`expiryKinds.${lot.expiryKind}`) : null,
                   `${t('lot.addedOn')}: ${formatLocalDate(lot.addedOn)}`,
                   lot.lotCode ? `${t('lot.lotCode')}: ${lot.lotCode}` : null,
+                  lot.openedOn ? t('lot.openedOn', { date: formatLocalDate(lot.openedOn) }) : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -150,6 +152,7 @@ export default function ProductDetailScreen() {
                 />
                 <Button compact variant="ghost" label={t('common.delete')} onPress={() => deleteLot(lot)} />
               </View>
+              <LotActions lot={lot} productName={product.name} />
               {consuming === lot.id ? (
                 <ConsumePanel
                   lot={lot}
@@ -195,6 +198,7 @@ function ConsumePanel({
   onDone: (error?: unknown) => void;
 }) {
   const { services } = useApp();
+  const feedback = useStockFeedback();
   const [amount, setAmount] = useState('1');
   const [unit, setUnit] = useState<Unit>(lot.unit);
   const [error, setError] = useState<string | null>(null);
@@ -206,8 +210,9 @@ function ConsumePanel({
       return;
     }
     try {
-      await services.inventory.consumeLot(lot.id, milli, u);
+      const r = await services.inventory.consumeFromLot(lot.id, milli, u);
       onDone();
+      feedback(t('lotActions.consumedDone', { amount: qty(milli, u), name: productName }), r, { id: lot.productId, name: productName });
     } catch (e) {
       setError(errorMessage(e));
     }

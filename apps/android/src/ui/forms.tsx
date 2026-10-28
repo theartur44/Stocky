@@ -5,7 +5,7 @@ import { addDays, formatLocalDate, parseUserDate, toLocalDate, type LocalDate } 
 import type { ExpiryKind } from '../domain/expiry';
 import type { Category, Location } from '../domain/models';
 import { formatMilli, parseQuantity, type Unit } from '../domain/units';
-import type { LotInput, ProductInput } from '../domain/validation';
+import { MAX_OPEN_DAYS, type LotInput, type ProductInput } from '../domain/validation';
 import { t } from '../i18n';
 import { Body, Button, ChipGroup, SwitchRow, TextField } from './components';
 import { categoryOptions, expiryKindOptions, unitOptions } from './format';
@@ -26,6 +26,8 @@ export interface ProductDraft {
   lowStock: string;
   /** Contenido de un envase (vacío si no se sabe o se cuenta por unidades). */
   pack: string;
+  /** Días que dura abierto (vacío si no se indica). */
+  openDays: string;
   notes: string;
   imageUrl: string | null;
   source: 'manual' | 'openfoodfacts';
@@ -42,6 +44,7 @@ export function emptyProductDraft(partial: Partial<ProductDraft> = {}): ProductD
     defaultPlaceId: null,
     lowStock: '',
     pack: '',
+    openDays: '',
     notes: '',
     imageUrl: null,
     source: 'manual',
@@ -62,6 +65,11 @@ export function productDraftToInput(d: ProductDraft): { input?: ProductInput; er
     pack = parseQuantity(d.pack);
     if (pack === null) errors.packQuantityMilli = t('errors.invalidQuantity');
   }
+  let openDays: number | null = null;
+  if (d.openDays.trim()) {
+    openDays = /^\d{1,3}$/.test(d.openDays.trim()) ? Number(d.openDays.trim()) : NaN;
+    if (!(openDays >= 1 && openDays <= MAX_OPEN_DAYS)) errors.openDays = t('errors.invalidValue');
+  }
   if (Object.keys(errors).length) return { errors };
   return {
     errors,
@@ -75,6 +83,7 @@ export function productDraftToInput(d: ProductDraft): { input?: ProductInput; er
       defaultPlaceId: d.defaultPlaceId,
       lowStockThresholdMilli: threshold,
       packQuantityMilli: pack,
+      openDays,
       imageUrl: d.imageUrl,
       source: d.source,
       notes: d.notes || null,
@@ -139,6 +148,15 @@ export function ProductFields({
         maxLength={12}
       />
       <TextField
+        label={`${t('product.openDays')} (${t('common.optional')})`}
+        hint={t('product.openDaysHelp')}
+        value={value.openDays}
+        onChangeText={set('openDays')}
+        error={errors.openDays}
+        keyboardType="number-pad"
+        maxLength={3}
+      />
+      <TextField
         label={`${t('product.notes')} (${t('common.optional')})`}
         value={value.notes}
         onChangeText={set('notes')}
@@ -164,6 +182,8 @@ export interface LotDraft {
   estimated: boolean;
   lotCode: string;
   notes: string;
+  /** Día en que se abrió (null = cerrado). */
+  openedOn: LocalDate | null;
 }
 
 export function emptyLotDraft(partial: Partial<LotDraft> = {}): LotDraft {
@@ -178,6 +198,7 @@ export function emptyLotDraft(partial: Partial<LotDraft> = {}): LotDraft {
     estimated: false,
     lotCode: '',
     notes: '',
+    openedOn: null,
     ...partial,
   };
 }
@@ -194,6 +215,7 @@ export function lotToDraft(l: LotInput): LotDraft {
     estimated: l.expiryEstimated ?? false,
     lotCode: l.lotCode ?? '',
     notes: l.notes ?? '',
+    openedOn: l.openedOn ?? null,
   };
 }
 
@@ -220,6 +242,7 @@ export function lotDraftToInput(d: LotDraft): { input?: LotInput; errors: Record
       expiryEstimated: d.estimated,
       lotCode: d.lotCode || null,
       notes: d.notes || null,
+      openedOn: d.openedOn,
     },
   };
 }
@@ -260,7 +283,7 @@ export function LotFields({
       <TextField
         label={t('lot.expiryDate')}
         hint={t('lot.expiryDateHint')}
-        placeholder="dd/mm/aaaa"
+        placeholder={t('lot.datePlaceholder')}
         value={value.expiry}
         onChangeText={set('expiry')}
         error={errors.expiryDate}
@@ -276,6 +299,11 @@ export function LotFields({
       {value.expiry.trim() ? (
         <SwitchRow label={t('lot.estimated')} value={value.estimated} onChange={set('estimated')} />
       ) : null}
+      <SwitchRow
+        label={value.openedOn ? t('lot.openedOn', { date: formatLocalDate(value.openedOn) }) : t('lot.opened')}
+        value={value.openedOn !== null}
+        onChange={(on) => set('openedOn')(on ? (value.openedOn ?? today) : null)}
+      />
       <TextField
         label={`${t('lot.lotCode')} (${t('common.optional')})`}
         value={value.lotCode}

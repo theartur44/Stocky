@@ -30,6 +30,7 @@ const SYNC_TRIGGER_NAMES = (tables: TriggerTables) => [
 ];
 
 const V4_TABLES: TriggerTables = [['places', 'place'], ...V3_TABLES];
+const V4_LOT_COLUMNS = [...V3_LOT_COLUMNS, 'place_id'];
 
 export const MIGRATIONS: Migration[] = [
   {
@@ -178,7 +179,7 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE stock_lots ADD COLUMN place_id TEXT REFERENCES places(id) ON DELETE SET NULL`,
       `ALTER TABLE products ADD COLUMN default_place_id TEXT REFERENCES places(id) ON DELETE SET NULL`,
       `CREATE INDEX idx_stock_lots_place ON stock_lots(place_id)`,
-      ...syncTriggers(V4_TABLES, [...V3_LOT_COLUMNS, 'place_id']),
+      ...syncTriggers(V4_TABLES, V4_LOT_COLUMNS),
       // Se crean después de los triggers: si el móvil está conectado a un hogar, el cambio se comparte.
       ...DEFAULT_PLACES.map(
         (p, i) =>
@@ -187,6 +188,36 @@ export const MIGRATIONS: Migration[] = [
       ),
       `UPDATE stock_lots SET place_id = (SELECT id FROM places WHERE places.kind = stock_lots.location ORDER BY position LIMIT 1)`,
       `UPDATE products SET default_place_id = (SELECT id FROM places WHERE places.kind = products.default_location ORDER BY position LIMIT 1)`,
+    ],
+  },
+  {
+    version: 5,
+    description: 'Fecha de apertura de los lotes, días que dura abierto un producto e historial de consumos',
+    statements: [
+      `ALTER TABLE stock_lots ADD COLUMN opened_on TEXT CHECK (opened_on IS NULL OR length(opened_on) = 10)`,
+      `ALTER TABLE products ADD COLUMN open_days INTEGER CHECK (open_days IS NULL OR open_days BETWEEN 1 AND 365)`,
+      // Abrir un lote cambia sus datos (no solo la cantidad): se envía completo.
+      'DROP TRIGGER IF EXISTS sync_stock_lots_adjust',
+      'DROP TRIGGER IF EXISTS sync_stock_lots_update',
+      ...lotTriggers([...V4_LOT_COLUMNS, 'opened_on']),
+      // Historial de este móvil (no se sincroniza). Guarda una copia del nombre y del lote para
+      // seguir mostrándolo, y poder deshacer, aunque el producto o el lote ya no existan.
+      `CREATE TABLE stock_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        batch_id TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('consumed','discarded')),
+        product_id TEXT NOT NULL,
+        product_name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        quantity_milli INTEGER NOT NULL CHECK (quantity_milli > 0),
+        unit TEXT NOT NULL CHECK (unit IN ('unit','g','kg','ml','l')),
+        expired INTEGER NOT NULL DEFAULT 0 CHECK (expired IN (0,1)),
+        lot_json TEXT NOT NULL,
+        day TEXT NOT NULL,
+        at TEXT NOT NULL
+      )`,
+      `CREATE INDEX idx_stock_events_at ON stock_events(at)`,
+      `CREATE INDEX idx_stock_events_batch ON stock_events(batch_id)`,
     ],
   },
 ];
@@ -209,12 +240,20 @@ function syncTriggers(tables: TriggerTables = V3_TABLES, lotColumns: readonly st
        BEGIN INSERT INTO sync_outbox (entity, entity_id, kind) VALUES ('${entity}', NEW.id, 'upsert'); END`,
     );
   }
-  // Lotes: si solo cambia la cantidad se envía la diferencia (delta), que se
-  // suma en el servidor sin pisar lo que haya consumido otro móvil a la vez.
+  out.push(...lotTriggers(lotColumns));
+  return out;
+}
+
+/**
+ * Lotes: si solo cambia la cantidad se envía la diferencia (delta), que se
+ * suma en el servidor sin pisar lo que haya consumido otro móvil a la vez.
+ */
+function lotTriggers(lotColumns: readonly string[]): string[] {
+  const active = `(SELECT enabled = 1 AND applying = 0 FROM sync_state WHERE id = 1)`;
   const sameLot = lotColumns
     .map((c) => `NEW.${c} IS OLD.${c}`)
     .join(' AND ');
-  out.push(
+  return [
     `CREATE TRIGGER sync_stock_lots_adjust AFTER UPDATE ON stock_lots
        WHEN ${active} AND NEW.quantity_milli <> OLD.quantity_milli AND ${sameLot}
      BEGIN INSERT INTO sync_outbox (entity, entity_id, kind, delta_milli)
@@ -222,8 +261,7 @@ function syncTriggers(tables: TriggerTables = V3_TABLES, lotColumns: readonly st
     `CREATE TRIGGER sync_stock_lots_update AFTER UPDATE ON stock_lots
        WHEN ${active} AND NOT (${sameLot})
      BEGIN INSERT INTO sync_outbox (entity, entity_id, kind) VALUES ('stock_lot', NEW.id, 'upsert'); END`,
-  );
-  return out;
+  ];
 }
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version;

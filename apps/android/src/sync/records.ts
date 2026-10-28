@@ -82,6 +82,7 @@ export const ENTITIES: Record<SyncEntity, EntitySpec> = {
       ['default_place_id', 'defaultPlaceId', 'text?', id],
       ['low_stock_threshold_milli', 'lowStockThresholdMilli', 'int?', quantity],
       ['pack_quantity_milli', 'packQuantityMilli', 'int?', quantity],
+      ['open_days', 'openDays', 'int?', int(1, 365)],
       // Una imagen solo se muestra si su dirección es segura; si no, se descarta (el resto vale).
       ['image_url', 'imageUrl', 'text?', (v) => (typeof v === 'string' && isSafeImageUrl(v) ? v : null)],
       ['source', 'source', 'text', (v) => (v === 'openfoodfacts' ? v : 'manual')],
@@ -109,6 +110,7 @@ export const ENTITIES: Record<SyncEntity, EntitySpec> = {
       ['expiry_estimated', 'expiryEstimated', 'int', flag],
       ['lot_code', 'lotCode', 'text?', text(0, LIMITS.lotCode)],
       ['notes', 'notes', 'text?', text(0, LIMITS.notes)],
+      ['opened_on', 'openedOn', 'text?', date],
       ...STAMPS,
     ],
   },
