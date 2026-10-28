@@ -4,6 +4,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { toLocalDate } from '../../domain/dates';
 import { getExpiryStatus, needsAttention } from '../../domain/expiry';
+import { quickConsumeAmount } from '../../domain/inventory';
 import type { ProductStockSummary } from '../../domain/models';
 import { normalizeKey } from '../../domain/text';
 import { formatQuantity, type Unit } from '../../domain/units';
@@ -47,15 +48,6 @@ function matches(s: ProductStockSummary, filter: Filter, q: string, today: strin
     (s.product.brand !== null && normalizeKey(s.product.brand).includes(q)) ||
     s.product.barcode === q
   );
-}
-
-/** Lo que se gasta con el botón «−1»: un envase o una unidad. */
-function quickConsumeAmount(s: ProductStockSummary): { milli: number; unit: Unit } | null {
-  const p = s.product;
-  if (s.lots.length === 0 || s.incompatibleLots > 0) return null;
-  if (p.defaultUnit === 'unit') return { milli: 1000, unit: 'unit' };
-  if (p.packQuantityMilli) return { milli: p.packQuantityMilli, unit: p.defaultUnit };
-  return null;
 }
 
 export default function InventoryScreen() {

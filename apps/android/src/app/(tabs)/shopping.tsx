@@ -2,12 +2,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { defaultShoppingAmount } from '../../domain/inventory';
 import type { Product, ShoppingItem } from '../../domain/models';
 import { parseQuickAdd } from '../../domain/quickAdd';
+import { groupByCategory, shoppingListText } from '../../domain/shoppingGroups';
 import { normalizeKey } from '../../domain/text';
 import { formatMilli, type Unit } from '../../domain/units';
 import { t } from '../../i18n';
@@ -65,20 +66,45 @@ export default function ShoppingScreen() {
     ['shopping', 'inventory'],
   );
 
+  const pending = useMemo(
+    () => new Set((q.data?.items ?? []).filter((i) => !i.transferredAt).flatMap((i) => [i.productId ?? '', normalizeKey(i.name)])),
+    [q.data],
+  );
   const suggestions = useMemo((): Product[] => {
     if (!q.data) return [];
-    const pending = new Set(q.data.items.filter((i) => !i.transferredAt).flatMap((i) => [i.productId ?? '', normalizeKey(i.name)]));
     return q.data.summaries
       .filter((s) => s.lots.length === 0 || (s.isLowStock && s.product.lowStockThresholdMilli !== null))
       .map((s) => s.product)
       .filter((p) => !pending.has(p.id) && !pending.has(normalizeKey(p.name)))
       .slice(0, 12);
+  }, [q.data, pending]);
+  // Al escribir, productos del catálogo que coinciden (evita duplicados con nombres distintos).
+  const matches = useMemo((): Product[] => {
+    const typed = normalizeKey(parseQuickAdd(text)?.name ?? '');
+    if (!q.data || typed.length < 2) return [];
+    return q.data.summaries
+      .map((s) => s.product)
+      .filter((p) => normalizeKey(p.name).includes(typed) && !pending.has(p.id))
+      .slice(0, 8);
+  }, [q.data, text, pending]);
+  const categoryOf = useMemo(() => {
+    const map = new Map((q.data?.summaries ?? []).map((s) => [s.product.id, s.product.category]));
+    return (id: string) => map.get(id);
   }, [q.data]);
 
   if (q.loading) return <LoadingView />;
   if (q.error || !q.data) return <ErrorView message={errorMessage(q.error)} onRetry={q.reload} />;
   const { lists, current, items } = q.data;
   const toBuy = items.filter((i) => !i.checked && !i.transferredAt);
+  const groups = groupByCategory(toBuy, categoryOf);
+
+  const share = () =>
+    void Share.share({
+      message: shoppingListText(listLabel(current), groups, {
+        category: (c) => t(`categories.${c}`),
+        item: (i) => `${i.name} (${qty(i.quantityMilli, i.unit)})`,
+      }),
+    }).catch(() => undefined);
   const inCart = items.filter((i) => i.checked && !i.transferredAt);
   const done = items.filter((i) => i.transferredAt);
 
@@ -97,7 +123,11 @@ export default function ShoppingScreen() {
 
   const addSuggestion = async (p: Product) => {
     try {
-      await services.shopping.addItem(current.id, { name: p.name, productId: p.id, ...defaultShoppingAmount(p) });
+      // Si se escribió una cantidad («2 leche»), se respeta.
+      const typed = parseQuickAdd(text);
+      const amount = typed && /\d/.test(text) ? { quantityMilli: typed.quantityMilli, unit: typed.unit } : defaultShoppingAmount(p);
+      await services.shopping.addItem(current.id, { name: p.name, productId: p.id, ...amount });
+      setText('');
       toast(t('shopping.added', { name: p.name }), { icon: 'cart' });
     } catch (e) {
       toast(errorMessage(e), { tone: 'danger' });
@@ -192,11 +222,11 @@ export default function ShoppingScreen() {
           )}
         </Glass>
 
-        {suggestions.length > 0 ? (
+        {(matches.length > 0 || (!text.trim() && suggestions.length > 0)) ? (
           <View style={{ gap: spacing.sm }}>
-            <Text style={[styles.overline, { color: colors.textMuted }]}>{t('shopping.suggestions')}</Text>
+            <Text style={[styles.overline, { color: colors.textMuted }]}>{matches.length > 0 ? t('shopping.fromCatalog') : t('shopping.suggestions')}</Text>
             <HorizontalScroller contentContainerStyle={{ flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.xl }}>
-              {suggestions.map((p) => (
+              {(matches.length > 0 ? matches : suggestions).map((p) => (
                 <PressableScale
                   key={p.id}
                   accessibilityRole="button"
@@ -218,12 +248,22 @@ export default function ShoppingScreen() {
 
         {toBuy.length > 0 ? (
           <>
-            <SectionHeader title={t('shopping.toBuy', { count: toBuy.length })} />
+            <SectionHeader
+              title={t('shopping.toBuy', { count: toBuy.length })}
+              action={<IconButton icon="share-social-outline" label={t('shopping.share')} onPress={share} />}
+            />
             <Card style={{ paddingVertical: spacing.xs }}>
-              {toBuy.map((item, i) => (
-                <FadeIn key={item.id} delay={i * 25}>
-                  <ItemRow item={item} />
-                </FadeIn>
+              {groups.map((g) => (
+                <View key={g.category}>
+                  {groups.length > 1 ? (
+                    <Text style={[styles.overline, styles.groupTitle, { color: colors.textMuted }]}>{t(`categories.${g.category}`)}</Text>
+                  ) : null}
+                  {g.items.map((item, i) => (
+                    <FadeIn key={item.id} delay={i * 25}>
+                      <ItemRow item={item} />
+                    </FadeIn>
+                  ))}
+                </View>
               ))}
             </Card>
           </>
@@ -362,6 +402,7 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.md },
   quickAdd: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radius.pill, paddingLeft: spacing.lg, paddingRight: spacing.xs },
   overline: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  groupTitle: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xs },
   suggestion: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, minHeight: 40, borderRadius: radius.pill, maxWidth: 220 },
   item: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 60 },
   check: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },

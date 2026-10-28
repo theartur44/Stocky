@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Image, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { formatLocalDate, toLocalDate } from '../../domain/dates';
 import { defaultShoppingAmount, summarizeProduct } from '../../domain/inventory';
@@ -23,6 +23,7 @@ import {
   Notice,
   Screen,
   TextField,
+  ProductImage,
   Title,
 } from '../../ui/components';
 import { expiryLabel, qty } from '../../ui/format';
@@ -103,11 +104,7 @@ export default function ProductDetailScreen() {
     <Screen>
       <Stack.Screen options={{ title: product.name }} />
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
-        {product.imageUrl ? (
-          <Image source={{ uri: product.imageUrl }} style={{ width: 72, height: 72, borderRadius: 20 }} resizeMode="cover" accessible={false} />
-        ) : (
-          <CategoryAvatar category={product.category} size={72} />
-        )}
+        <ProductImage uri={product.imageUrl} category={product.category} size={72} radius={20} />
         <View style={{ flex: 1, gap: 4 }}>
           <Title>{product.name}</Title>
           <Body muted small>

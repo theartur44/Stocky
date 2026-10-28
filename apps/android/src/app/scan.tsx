@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isLookupableBarcode, toCanonicalGtin } from '../domain/barcode';
+import { quickConsumeAmount } from '../domain/inventory';
 import {
   emptySession,
   sessionReducer,
@@ -36,8 +37,10 @@ import { useApp } from '../state/AppProvider';
 import { errorMessage, logError } from '../state/errors';
 import { resolveScan } from '../services/scanService';
 import { Button, IconButton, LoadingView, PressableScale } from '../ui/components';
+import { qty } from '../ui/format';
 import { usePlaces } from '../ui/places';
 import { ScanLineCard } from '../ui/scan/ScanLineCard';
+import { useStockFeedback } from '../ui/stockActions';
 import { elevation, font, radius, spacing, useTheme, withAlpha } from '../ui/theme';
 import { useToast } from '../ui/toast';
 
@@ -47,7 +50,8 @@ const SAME_CODE_COOLDOWN_MS = 2000;
 /** Consultas simultáneas a Open Food Facts. */
 const MAX_PARALLEL_LOOKUPS = 3;
 
-type Mode = 'inventory' | 'shopping';
+/** Añadir a casa, a la lista de la compra, o gastar (descontar un envase por lectura). */
+type Mode = 'inventory' | 'shopping' | 'consume';
 
 const haptic = {
   success: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined),
@@ -71,7 +75,10 @@ export default function QuickScanScreen() {
   const navigation = useNavigation();
   const [permission, requestPermission] = useCameraPermissions();
 
-  const [mode, setMode] = useState<Mode>(params.mode === 'shopping' ? 'shopping' : 'inventory');
+  const [mode, setMode] = useState<Mode>(params.mode === 'shopping' ? 'shopping' : params.mode === 'consume' ? 'consume' : 'inventory');
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const feedback = useStockFeedback();
   const [session, dispatch] = useReducer(sessionReducer, emptySession);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [torch, setTorch] = useState(false);
@@ -239,6 +246,37 @@ export default function QuickScanScreen() {
     ]);
   }
 
+  /** Modo «Gastar»: descuenta un envase (o una unidad) del producto, empezando por lo que caduca antes. */
+  const consumeScanned = useCallback(
+    async (code: string) => {
+      try {
+        const product = await services.inventory.getProductByBarcode(code);
+        const summary = product ? (await services.inventory.listSummaries()).find((s) => s.product.id === product.id) : undefined;
+        if (!product || !summary || summary.lots.length === 0) {
+          haptic.error();
+          toast(product ? t('quickScan.consumeNoStock', { name: product.name }) : t('quickScan.consumeUnknown'), { tone: 'warning' });
+          return;
+        }
+        const amount = quickConsumeAmount(summary);
+        // Sin tamaño de envase (p. ej. 1,2 kg de carne), «un envase» es el lote que caduca antes.
+        const r = amount
+          ? await services.inventory.consumeProduct(product.id, amount.milli, amount.unit)
+          : await services.inventory.finishLot(summary.lots[0]!.id);
+        haptic.success();
+        flashOnce();
+        feedback(
+          amount ? t('lotActions.consumedDone', { amount: qty(amount.milli, amount.unit), name: product.name }) : t('lotActions.finishedDone', { name: product.name }),
+          r,
+          product,
+        );
+      } catch (e) {
+        haptic.error();
+        toast(errorMessage(e), { tone: 'danger' });
+      }
+    },
+    [services, toast, feedback, flashOnce],
+  );
+
   const handleCode = useCallback(
     (raw: string, type?: string) => {
       const code = toCanonicalGtin(raw, type);
@@ -249,6 +287,10 @@ export default function QuickScanScreen() {
       if (!code) {
         haptic.error();
         toast(t('scan.invalidCode'), { tone: 'warning' });
+        return;
+      }
+      if (modeRef.current === 'consume') {
+        void consumeScanned(code);
         return;
       }
       if (!isLookupableBarcode(code) && !sessionRef.current.lines.some((l) => l.code === code)) {
@@ -277,7 +319,7 @@ export default function QuickScanScreen() {
         enqueue(code);
       }
     },
-    [enqueue, flashOnce, services, toast],
+    [enqueue, flashOnce, services, toast, consumeScanned],
   );
 
   const retry = useCallback(
@@ -390,7 +432,7 @@ export default function QuickScanScreen() {
       <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
         <RoundButton icon="close" label={t('common.close')} onPress={() => router.back()} />
         <View style={styles.modeSwitch}>
-          {(['inventory', 'shopping'] as const).map((m) => (
+          {(['inventory', 'shopping', 'consume'] as const).map((m) => (
             <PressableScale
               key={m}
               accessibilityRole="radio"
@@ -399,7 +441,7 @@ export default function QuickScanScreen() {
               onPress={() => setMode(m)}
               style={[styles.modeBtn, mode === m && { backgroundColor: '#FFFFFF' }]}
             >
-              <Ionicons name={m === 'inventory' ? 'home' : 'cart'} size={16} color={mode === m ? colors.primaryStrong : '#FFFFFF'} />
+              <Ionicons name={m === 'inventory' ? 'home' : m === 'shopping' ? 'cart' : 'remove-circle'} size={16} color={mode === m ? colors.primaryStrong : '#FFFFFF'} />
               <Text style={{ color: mode === m ? colors.primaryStrong : '#FFFFFF', fontWeight: '700', fontSize: font.small }}>
                 {t(`quickScan.mode.${m}`)}
               </Text>
@@ -534,7 +576,10 @@ export default function QuickScanScreen() {
           )}
         />
 
-        {summary.products > 0 ? (
+        {mode === 'consume' ? (
+          <Text style={{ color: colors.textMuted, textAlign: 'center', fontSize: font.small }}>{t('quickScan.consumeHint')}</Text>
+        ) : null}
+        {summary.products > 0 && mode !== 'consume' ? (
           <View style={{ gap: spacing.sm }}>
             <PressableScale
               accessibilityRole="button"

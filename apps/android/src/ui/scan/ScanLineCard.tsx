@@ -1,12 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { formatLocalDate, parseUserDate, toLocalDate } from '../../domain/dates';
 import { EXPIRY_SHORTCUTS, lineQuantity, shortcutDate, type ScanLine, type SessionAction } from '../../domain/scanSession';
 import { formatQuantity } from '../../domain/units';
 import { t } from '../../i18n';
-import { CategoryAvatar, ChipGroup, IconButton, PressableScale, Stepper } from '../components';
+import { ChipGroup, IconButton, PressableScale, ProductImage, Stepper } from '../components';
 import { PlacePicker } from '../places';
 import { font, radius, spacing, useTheme } from '../theme';
 
@@ -63,11 +63,7 @@ export const ScanLineCard = memo(function ScanLineCard({
         accessibilityHint={t('quickScan.editHint')}
         style={styles.head}
       >
-        {line.imageUrl ? (
-          <Image source={{ uri: line.imageUrl }} style={styles.image} accessible={false} resizeMode="cover" />
-        ) : (
-          <CategoryAvatar category={line.category} size={46} />
-        )}
+        <ProductImage uri={line.imageUrl} category={line.category} size={46} radius={14} />
         <View style={{ flex: 1 }}>
           <Text style={{ color: colors.text, fontWeight: '700', fontSize: font.body }} numberOfLines={1}>
             {line.name}
@@ -182,7 +178,6 @@ export const ScanLineCard = memo(function ScanLineCard({
 const styles = StyleSheet.create({
   card: { borderRadius: radius.lg, borderWidth: 1.5, padding: spacing.md, gap: spacing.sm },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  image: { width: 46, height: 46, borderRadius: 14, backgroundColor: '#fff' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radius.md, paddingHorizontal: spacing.md },
   remove: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 44 },

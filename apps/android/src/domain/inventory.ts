@@ -70,3 +70,12 @@ export function defaultShoppingAmount(p: Pick<Product, 'defaultUnit' | 'packQuan
   if (p.defaultUnit === 'kg' || p.defaultUnit === 'l') return { quantityMilli: 1000, unit: p.defaultUnit };
   return { quantityMilli: 1000, unit: 'unit' };
 }
+
+/** Lo que se gasta con el botón «−1»: un envase o una unidad. */
+export function quickConsumeAmount(s: ProductStockSummary): { milli: number; unit: Unit } | null {
+  const p = s.product;
+  if (s.lots.length === 0 || s.incompatibleLots > 0) return null;
+  if (p.defaultUnit === 'unit') return { milli: 1000, unit: 'unit' };
+  if (p.packQuantityMilli) return { milli: p.packQuantityMilli, unit: p.defaultUnit };
+  return null;
+}

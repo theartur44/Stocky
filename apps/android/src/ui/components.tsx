@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, type ComponentProps, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -551,6 +551,25 @@ export function CategoryAvatar({ category, size = 44 }: { category: Category; si
     >
       <Ionicons name={s.icon as IconName} size={size * 0.5} color={s.color} />
     </View>
+  );
+}
+
+/**
+ * Foto del producto (de Open Food Facts). Sin conexión, si Android no la tiene
+ * guardada, o si falla, se muestra el icono de la categoría en vez de un hueco.
+ */
+export function ProductImage({ uri, category, size = 46, radius: r = size / 2.6 }: { uri: string | null; category: Category; size?: number; radius?: number }) {
+  const [failed, setFailed] = useState(false);
+  if (!uri || failed) return <CategoryAvatar category={category} size={size} />;
+  return (
+    <Image
+      source={{ uri }}
+      onError={() => setFailed(true)}
+      accessible={false}
+      accessibilityIgnoresInvertColors
+      resizeMode="cover"
+      style={{ width: size, height: size, borderRadius: r }}
+    />
   );
 }
 
