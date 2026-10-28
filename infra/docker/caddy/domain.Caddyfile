@@ -4,6 +4,13 @@
 	email {$ACME_EMAIL}
 	# Sin panel de administración expuesto.
 	admin off
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 30s
+			idle 2m
+		}
+	}
 }
 
 (api) {
@@ -23,6 +30,8 @@
 	# Solo se publica la API; cualquier otra ruta responde 404.
 	handle /api/* {
 		reverse_proxy api:8000 {
+			# La IP de quien se conecta; lo que mande el cliente en X-Forwarded-For se descarta.
+			header_up X-Forwarded-For {client_ip}
 			header_up -X-Forwarded-Host
 		}
 	}

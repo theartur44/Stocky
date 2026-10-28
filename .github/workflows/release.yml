@@ -7,9 +7,11 @@ name: Publicar versión
 # También se puede lanzar a mano (Actions → Publicar versión → Run workflow)
 # indicando la versión: entonces crea la release y adjunta el APK.
 #
-# Firma: si existen los secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
-# ANDROID_KEY_ALIAS y ANDROID_KEY_PASSWORD se firma con esa clave propia
-# (ver docs/publicar-version.md); si no, con la clave de pruebas.
+# Seguridad: la compilación (npm, Gradle y cientos de dependencias) se hace en
+# un trabajo SIN la clave de firma y sin permiso de escritura. La firma y la
+# subida van en otro trabajo que solo ejecuta apksigner y gh. Hacen falta los
+# secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS
+# y ANDROID_KEY_PASSWORD (ver docs/publicar-version.md); sin ellos no se publica.
 on:
   release:
     types: [published]
@@ -20,21 +22,29 @@ on:
         required: true
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.event.release.tag_name || inputs.version }}
   cancel-in-progress: false
 
+defaults:
+  run:
+    # bash -eo pipefail: un error en medio de una tubería detiene el flujo.
+    shell: bash
+
 jobs:
-  apk:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       TAG: ${{ github.event.release.tag_name || inputs.version }}
-      GH_TOKEN: ${{ github.token }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -64,39 +74,62 @@ jobs:
         working-directory: apps/android
         run: npx expo prebuild --platform android --no-install --clean
 
-      - name: Clave de firma (si está configurada)
-        env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/stocky-release.keystore"
-            echo "STOCKY_KEYSTORE=$RUNNER_TEMP/stocky-release.keystore" >> "$GITHUB_ENV"
-            echo "Se firmará con la clave propia."
-          else
-            echo "::warning::Sin clave propia: el APK se firma con la clave de pruebas (ver docs/publicar-version.md)."
-          fi
-
-      - name: Compilar APK
+      - name: Compilar APK (sin la clave propia; se firma en el trabajo siguiente)
         working-directory: apps/android/android
         env:
           NODE_ENV: production
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-sin-firmar
+          path: apps/android/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 1
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.version }}
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk-sin-firmar
+
+      - name: Firmar con la clave propia
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STOCKY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           STOCKY_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           STOCKY_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
-
-      - name: Preparar fichero
-        id: apk
         run: |
-          name="stocky-${{ steps.version.outputs.version }}.apk"
-          cp apps/android/android/app/build/outputs/apk/release/app-release.apk "$name"
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$STOCKY_KEY_ALIAS" ]; then
+            echo "::error::Faltan los secrets de firma (ANDROID_*). No se publica un APK firmado con la clave de pruebas."
+            exit 1
+          fi
+          [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Versión no válida"; exit 1; }
+          ks="$RUNNER_TEMP/stocky-release.keystore"
+          trap 'rm -f "$ks"' EXIT
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$ks"
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          name="stocky-$VERSION.apk"
+          "$tools/apksigner" sign --ks "$ks" --ks-key-alias "$STOCKY_KEY_ALIAS" \
+            --ks-pass env:STOCKY_KEYSTORE_PASSWORD --key-pass env:STOCKY_KEY_PASSWORD \
+            --out "$name" app-release.apk
+          "$tools/apksigner" verify --print-certs "$name" | grep -i 'SHA-256' || true
           sha256sum "$name" > "$name.sha256"
-          rm -f "$RUNNER_TEMP/stocky-release.keystore"
-          echo "name=$name" >> "$GITHUB_OUTPUT"
 
       - name: Crear la release (lanzamiento manual)
         if: github.event_name == 'workflow_dispatch'
-        run: gh release create "$TAG" --target "$GITHUB_SHA" --title "Stocky ${{ steps.version.outputs.version }}" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Stocky $VERSION" --generate-notes
 
       - name: Adjuntar el APK a la release
-        run: gh release upload "$TAG" "${{ steps.apk.outputs.name }}" "${{ steps.apk.outputs.name }}.sha256" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" "stocky-$VERSION.apk" "stocky-$VERSION.apk.sha256" --clobber

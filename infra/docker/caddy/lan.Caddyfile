@@ -5,6 +5,18 @@
 {
 	admin off
 	auto_https off
+	servers {
+		# Si delante hay otro proxy (Nginx Proxy Manager, un túnel…), solo se cree la IP
+		# del cliente que manda ese proxy (STOCKY_TRUSTED_PROXIES en .env). Cualquier otro
+		# X-Forwarded-For se ignora: así nadie se salta el límite de intentos fingiendo IPs.
+		trusted_proxies static {$STOCKY_TRUSTED_PROXIES}
+		trusted_proxies_strict
+		timeouts {
+			read_header 10s
+			read_body 30s
+			idle 2m
+		}
+	}
 }
 
 :80 {
@@ -22,6 +34,8 @@
 
 	handle /api/* {
 		reverse_proxy api:8000 {
+			# Una sola IP, ya comprobada por Caddy (la API se fía de este valor).
+			header_up X-Forwarded-For {client_ip}
 			header_up -X-Forwarded-Host
 		}
 	}

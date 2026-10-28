@@ -11,6 +11,11 @@
 # Instrucciones completas: docs/servidor-docker.md
 name: stocky
 
+# Registros con tamaño limitado: una avalancha de peticiones no llena el disco.
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
 services:
   caddy:
     image: caddy:2-alpine
@@ -22,6 +27,8 @@ services:
     environment:
       STOCKY_ADDRESS: ${STOCKY_ADDRESS:?Define STOCKY_ADDRESS en .env (ejecuta ./stocky.sh)}
       ACME_EMAIL: ${ACME_EMAIL:-}
+      # Proxy delante de Caddy en modo IP (Nginx Proxy Manager, túnel…). Ver .env.example.
+      STOCKY_TRUSTED_PROXIES: ${STOCKY_TRUSTED_PROXIES:-127.0.0.1/32}
     volumes:
       # «domain» = HTTPS automático; «lan» = HTTP para la red de casa.
       - ./caddy/${STOCKY_MODE:-domain}.Caddyfile:/etc/caddy/Caddyfile:ro
@@ -34,6 +41,9 @@ services:
     cap_drop: [ALL]
     cap_add: [NET_BIND_SERVICE]
     security_opt: ["no-new-privileges:true"]
+    logging: *logging
+    mem_limit: 256m
+    pids_limit: 128
 
   api:
     build: ../../services/api
@@ -60,9 +70,13 @@ services:
       db:
         condition: service_healthy
     read_only: true
-    tmpfs: [/tmp]
+    tmpfs: ["/tmp:size=16m,noexec,nosuid,nodev"]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    logging: *logging
+    mem_limit: 768m
+    pids_limit: 128
+    cpus: "1.5"
 
   db:
     image: postgres:17-alpine
@@ -86,6 +100,9 @@ services:
       retries: 10
     security_opt: ["no-new-privileges:true"]
     shm_size: 128mb
+    logging: *logging
+    mem_limit: 1g
+    pids_limit: 256
 
 secrets:
   jwt_secret: { file: ./secrets/jwt_secret }

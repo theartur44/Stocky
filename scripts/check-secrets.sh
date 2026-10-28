@@ -19,10 +19,11 @@ patterns=(
   'sk-ant-[A-Za-z0-9_-]{20,}'                 # Anthropic
   '(password|passwd|secret|api_key|apikey|token)[[:space:]]*[:=][[:space:]]*["'\''][^"'\'' ]{8,}["'\'']'
   'postgres(ql)?://[^:/ ]+:[^@/ ]+@'          # URL con contraseña
+  '(store|key)Password[[:space:]]+["'\''][^"'\'' ]+["'\'']'   # contraseñas de firma en Gradle
 )
 
 # Ficheros que nunca deberían estar versionados.
-forbidden_files='(^|/)(\.env(\..*)?|google-services\.json|.*\.(jks|keystore|p12|p8|pem|key)|.*\.(db|sqlite|sqlite3))$'
+forbidden_files='(^|/)(\.env(\..*)?|google-services\.json|local\.properties|backup_passphrase|data_keys|.*\.(jks|keystore|p12|p8|pem|key|gpg|dump|b64|base64)|.*\.(db|sqlite|sqlite3))$|(^|/)secrets/'
 
 status=0
 files=$(git ls-files --cached --others --exclude-standard | grep -v -E '(^|/)node_modules/|package-lock\.json$|\.png$|\.ttf$' || true)

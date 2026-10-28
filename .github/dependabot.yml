@@ -1,0 +1,13 @@
+# Avisos de versiones nuevas (con parches de seguridad) de las acciones de GitHub,
+# las dependencias de Python del servidor y su imagen base. Una revisión al mes.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+  - package-ecosystem: pip
+    directory: /services/api
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: /services/api
+    schedule: { interval: monthly }

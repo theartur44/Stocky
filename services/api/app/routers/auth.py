@@ -243,7 +243,8 @@ def refresh(
 ) -> TokenPair:
     rate_limit(state, f"refresh:{client_ip(request)}", limit=60, window_seconds=600)
     digest = token_digest(body.refresh_token)
-    sess = db.scalar(select(DeviceSession).where(DeviceSession.refresh_hash == digest))
+    # Bloquea la fila: dos renovaciones simultáneas con el mismo token no pueden rotarlo las dos.
+    sess = db.scalar(select(DeviceSession).where(DeviceSession.refresh_hash == digest).with_for_update())
     if sess is None:
         # ¿Es un token ya rotado? Si alguien lo reutiliza, probablemente lo han robado:
         # se revoca la sesión entera para proteger al usuario.

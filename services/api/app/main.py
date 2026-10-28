@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import Engine, text
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -66,6 +67,12 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
         if settings.is_production:
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         return response
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_error(_request: Request, exc: RequestValidationError):
+        # Solo dónde y qué falla: nunca el valor recibido (podría ser una contraseña).
+        errors = [{"loc": list(e.get("loc", ())), "type": e.get("type", "invalid")} for e in exc.errors()]
+        return JSONResponse({"detail": errors}, status_code=422)
 
     @app.exception_handler(DecryptionError)
     async def _decryption_error(_request: Request, _exc: DecryptionError):

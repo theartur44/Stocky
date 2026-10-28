@@ -28,12 +28,19 @@ gen jwt_secret "openssl rand -base64 48 | tr -d '\n'"
 gen email_pepper "openssl rand -base64 48 | tr -d '\n'"
 gen data_keys "printf 'k%s:%s' \"\$(date +%Y%m)\" \"\$(openssl rand -base64 32 | tr -d '\n')\""
 gen registration_code "openssl rand -base64 18 | tr -d '/+=\n'"
+# Frase de las copias cifradas (scripts/backup.sh): se crea ya para que entre en tu copia de secrets/.
+gen backup_passphrase "openssl rand -base64 48 | tr -d '\n'"
 
 # Autoridad de certificación propia y certificado TLS para PostgreSQL (nombre «db»).
 if [[ ! -s "$DIR/db_ca.crt" ]]; then
   openssl req -x509 -new -nodes -newkey rsa:3072 -sha256 -days 3650 \
     -subj "/CN=Stocky DB CA" -keyout "$DIR/db_ca.key" -out "$DIR/db_ca.crt" 2>/dev/null
   echo "  + db_ca.crt / db_ca.key"
+fi
+# El certificado del servidor caduca a los 825 días: se renueva 30 días antes (hace falta db_ca.key).
+if [[ -s "$DIR/db_server.crt" && -s "$DIR/db_ca.key" ]] && ! openssl x509 -checkend $((30 * 86400)) -noout -in "$DIR/db_server.crt" >/dev/null; then
+  rm -f "$DIR/db_server.crt" "$DIR/db_server.key"
+  echo "  ~ db_server.crt caduca pronto: se renueva"
 fi
 if [[ ! -s "$DIR/db_server.crt" ]]; then
   openssl req -new -nodes -newkey rsa:3072 -sha256 -subj "/CN=db" \

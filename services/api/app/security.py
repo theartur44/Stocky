@@ -24,6 +24,8 @@ import uuid
 from urllib.parse import quote
 from datetime import UTC, datetime, timedelta
 
+import threading
+
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
@@ -35,19 +37,25 @@ from .config import Settings
 _hasher = PasswordHasher(time_cost=3, memory_cost=64 * 1024, parallelism=2, hash_len=32, salt_len=16)
 # Hash ficticio para igualar tiempos cuando el usuario no existe (anti-enumeración).
 _DUMMY_HASH = _hasher.hash(secrets.token_urlsafe(16))
+# Cada cálculo usa 64 MiB: se limitan los simultáneos para que una avalancha de
+# inicios de sesión no agote la memoria del servidor (el resto espera su turno).
+_ARGON2_SLOTS = threading.BoundedSemaphore(4)
 
 JWT_ISSUER = "stocky-api"
 JWT_AUDIENCE = "stocky-app"
 
 
 def hash_password(password: str) -> str:
-    return _hasher.hash(password)
+    with _ARGON2_SLOTS:
+        return _hasher.hash(password)
 
 
 def verify_password(stored_hash: str | None, password: str) -> bool:
     """Verifica en tiempo similar exista o no el usuario."""
     try:
-        return _hasher.verify(stored_hash or _DUMMY_HASH, password) and stored_hash is not None
+        with _ARGON2_SLOTS:
+            ok = _hasher.verify(stored_hash or _DUMMY_HASH, password)
+        return ok and stored_hash is not None
     except (VerifyMismatchError, VerificationError, InvalidHashError):
         return False
 

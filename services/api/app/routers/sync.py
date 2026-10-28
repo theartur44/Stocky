@@ -14,16 +14,19 @@ import json
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..deps import AppState, HouseholdContext, get_db, get_household, get_state, require_role
+from ..deps import AppState, HouseholdContext, get_db, get_household, get_state, rate_limit, require_role
 from ..models import Household, ProcessedOp, SyncRecord
 from ..schemas import MAX_RECORD_BYTES, Change, OpResult, PullResponse, PushRequest, PushResponse, SyncOp
 
 router = APIRouter(prefix="/sync", tags=["sync"])
 
 MAX_QUANTITY_MILLI = 1_000_000_000
+# Registros (incluidas las lápidas) que puede guardar un hogar. Un hogar normal no pasa
+# de unos miles; el tope impide que un solo miembro llene el disco del servidor.
+MAX_HOUSEHOLD_RECORDS = 50_000
 
 
 def _aad(household_id: object, entity: str, entity_id: object) -> str:
@@ -37,11 +40,13 @@ def _encode(data: dict) -> bytes:
     return raw
 
 
-def _apply(state: AppState, db: Session, h: Household, op: SyncOp) -> tuple[str, str | None]:
-    """Aplica una operación. Devuelve (estado, motivo)."""
+def _apply(state: AppState, db: Session, h: Household, op: SyncOp, room: bool) -> tuple[str, str | None]:
+    """Aplica una operación. Devuelve (estado, motivo). `room`: si caben registros nuevos."""
     rec = db.get(SyncRecord, (h.id, op.entity, op.entity_id))
     aad = _aad(h.id, op.entity, op.entity_id)
     now = datetime.now(UTC)
+    if rec is None and op.kind != "adjust_quantity" and not room:
+        return "rejected", "quota_exceeded"
 
     if op.kind == "upsert":
         if op.data is None:
@@ -96,16 +101,21 @@ def push(
     state: AppState = Depends(get_state),
     db: Session = Depends(get_db),
 ) -> PushResponse:
+    rate_limit(state, f"sync-push:{ctx.auth.user.id}", limit=120, window_seconds=600)
     # Bloquea la fila del hogar: las revisiones se asignan en orden y sin huecos.
     h = db.scalar(select(Household).where(Household.id == ctx.household.id).with_for_update())
     assert h is not None
+    stored = db.scalar(select(func.count()).select_from(SyncRecord).where(SyncRecord.household_id == h.id)) or 0
     results: list[OpResult] = []
     for op in body.ops:
         done = db.get(ProcessedOp, (h.id, op.op_id))
         if done is not None:
             results.append(OpResult(op_id=op.op_id, status="duplicate", rev=done.rev))
             continue
-        status_, reason = _apply(state, db, h, op)
+        is_new = db.get(SyncRecord, (h.id, op.entity, op.entity_id)) is None
+        status_, reason = _apply(state, db, h, op, room=stored < MAX_HOUSEHOLD_RECORDS)
+        if status_ == "applied" and is_new:
+            stored += 1
         db.add(ProcessedOp(household_id=h.id, op_id=op.op_id, status=status_, rev=h.rev))
         results.append(OpResult(op_id=op.op_id, status=status_, rev=h.rev, reason=reason))
     db.commit()
@@ -120,6 +130,8 @@ def pull(
     state: AppState = Depends(get_state),
     db: Session = Depends(get_db),
 ) -> PullResponse:
+    # Una descarga completa son pocas páginas; esto solo frena un bucle o un abuso.
+    rate_limit(state, f"sync-pull:{ctx.auth.user.id}", limit=600, window_seconds=600)
     h = ctx.household
     if 0 < since < h.purged_rev:
         # Hay lápidas purgadas posteriores a `since`: el cliente debe resincronizar todo

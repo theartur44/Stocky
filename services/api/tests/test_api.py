@@ -28,7 +28,10 @@ def test_registration_requires_code(client):
 
 def test_weak_password_and_unknown_fields_are_rejected(client):
     base = {"email": "b@example.org", "registration_code": REG_CODE}
-    assert client.post("/api/v1/auth/register", json={**base, "password": "corta"}).status_code == 422
+    weak = client.post("/api/v1/auth/register", json={**base, "password": "corta"})
+    assert weak.status_code == 422
+    # El error dice qué campo falla, pero no devuelve la contraseña recibida.
+    assert "corta" not in weak.text and weak.json()["detail"][0]["loc"][-1] == "password"
     assert client.post("/api/v1/auth/register", json={**base, "password": PASSWORD, "is_admin": True}).status_code == 422
 
 
@@ -289,3 +292,22 @@ def test_delete_account_removes_data(api, app):
         assert db.scalars(select(User)).all() == []
         assert db.scalars(select(DeviceSession)).all() == []
         assert db.scalars(select(SyncRecord)).all() == []
+
+
+def test_household_record_quota(api, monkeypatch):
+    from app.routers import sync
+
+    monkeypatch.setattr(sync, "MAX_HOUSEHOLD_RECORDS", 2)
+    owner = setup_household(api)
+    first = uuid.uuid4()
+    res = owner.post("/sync/push", json={"ops": [upsert(first, lot()), upsert(uuid.uuid4(), lot()), upsert(uuid.uuid4(), lot())]}).json()
+    assert [r["status"] for r in res["results"]] == ["applied", "applied", "rejected"]
+    assert res["results"][2]["reason"] == "quota_exceeded"
+    # Lo que ya existe se puede seguir editando y borrando.
+    assert owner.post("/sync/push", json={"ops": [upsert(first, lot(name="v2"))]}).json()["results"][0]["status"] == "applied"
+
+
+def test_sync_is_rate_limited_per_user(api):
+    owner = setup_household(api)
+    codes = [owner.post("/sync/push", json={"ops": [upsert(uuid.uuid4(), lot())]}).status_code for _ in range(121)]
+    assert codes[:120] == [200] * 120 and codes[120] == 429

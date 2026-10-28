@@ -3,7 +3,9 @@ name: APK Android (pruebas)
 # Compila un APK instalable para PROBAR la app en un dispositivo.
 # Se firma con la clave propia si está configurada (secrets ANDROID_*, ver
 # docs/publicar-version.md), para poder instalarlo encima de una versión
-# publicada; si no, con la clave de pruebas de la plantilla.
+# publicada; si no, con la clave de pruebas de la plantilla. La firma se hace
+# en un trabajo aparte que no ejecuta npm ni Gradle (la clave no está al
+# alcance de las dependencias).
 # Solo se lanza a mano (Actions → APK Android (pruebas) → Run workflow), para
 # compilar únicamente la última versión y no un APK por cada cambio.
 on:
@@ -16,6 +18,10 @@ concurrency:
   group: android-apk-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -25,6 +31,8 @@ jobs:
         working-directory: apps/android
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -49,29 +57,16 @@ jobs:
       - name: Generar proyecto nativo (expo prebuild)
         run: npx expo prebuild --platform android --no-install --clean
 
-      - name: Clave de firma (si está configurada)
-        env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/stocky-release.keystore"
-            echo "STOCKY_KEYSTORE=$RUNNER_TEMP/stocky-release.keystore" >> "$GITHUB_ENV"
-          fi
-
       - name: Compilar APK release
         working-directory: apps/android/android
         env:
           NODE_ENV: production
-          STOCKY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          STOCKY_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          STOCKY_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
 
       - name: Información del APK
         working-directory: apps/android/android/app/build/outputs/apk/release
         run: |
           ls -la
-          sha256sum app-release.apk | tee app-release.apk.sha256
           "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME"/build-tools | sort -V | tail -1)/aapt dump permissions app-release.apk | tee permisos.txt
           "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME"/build-tools | sort -V | tail -1)/aapt dump badging app-release.apk | grep -E "package:|sdkVersion|targetSdkVersion|native-code" | tee badging.txt
 
@@ -80,7 +75,46 @@ jobs:
           name: stocky-apk-${{ github.sha }}
           path: |
             apps/android/android/app/build/outputs/apk/release/app-release.apk
-            apps/android/android/app/build/outputs/apk/release/app-release.apk.sha256
             apps/android/android/app/build/outputs/apk/release/permisos.txt
             apps/android/android/app/build/outputs/apk/release/badging.txt
+          retention-days: 14
+
+  sign:
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: stocky-apk-${{ github.sha }}
+
+      - name: Firmar con la clave propia (si está configurada)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STOCKY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          STOCKY_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          STOCKY_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            ks="$RUNNER_TEMP/stocky-release.keystore"
+            trap 'rm -f "$ks"' EXIT
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$ks"
+            tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+            "$tools/apksigner" sign --ks "$ks" --ks-key-alias "$STOCKY_KEY_ALIAS" \
+              --ks-pass env:STOCKY_KEYSTORE_PASSWORD --key-pass env:STOCKY_KEY_PASSWORD \
+              --out stocky-pruebas.apk app-release.apk
+          else
+            echo "::warning::Sin clave propia: el APK queda firmado con la clave de pruebas."
+            cp app-release.apk stocky-pruebas.apk
+          fi
+          sha256sum stocky-pruebas.apk | tee stocky-pruebas.apk.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stocky-apk-firmado-${{ github.sha }}
+          path: |
+            stocky-pruebas.apk
+            stocky-pruebas.apk.sha256
+            permisos.txt
+            badging.txt
           retention-days: 14
