@@ -182,7 +182,9 @@ class MemberUpdate(Strict):
     role: Literal["owner", "member", "viewer"]
 
 
-ENTITY = Literal["product", "stock_lot", "shopping_list", "shopping_item", "setting"]
+ENTITY = Literal["place", "product", "stock_lot", "shopping_list", "shopping_item", "setting"]
+#: Lo que se anuncia en /health para que la app sepa qué puede enviar a este servidor.
+SYNC_ENTITIES: tuple[str, ...] = ("place", "product", "stock_lot", "shopping_list", "shopping_item")
 MAX_RECORD_BYTES = 16 * 1024
 
 

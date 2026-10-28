@@ -7,6 +7,8 @@
  * - Los tokens solo pasan por `TokenStore` (almacén seguro del sistema en la
  *   app); nunca se escriben en SQLite ni en registros.
  */
+import { BASE_ENTITIES, isSyncEntity, type SyncEntity } from './records';
+
 export interface Tokens {
   accessToken: string;
   refreshToken: string;
@@ -248,9 +250,12 @@ export function createApiClient(opts: {
     baseUrl: opts.baseUrl,
 
     /** Comprueba que la dirección corresponde a un servidor de Stocky que funciona. */
-    async health(): Promise<void> {
-      const body = await call<{ status?: unknown }>('/health');
+    /** Comprueba que es un servidor de Stocky y devuelve qué tipos de datos sabe sincronizar. */
+    async health(): Promise<SyncEntity[]> {
+      const body = await call<{ status?: unknown; entities?: unknown }>('/health');
       if (body?.status !== 'ok') throw new ApiError('not_stocky');
+      // Un servidor anterior a los sitios personalizables no anuncia la lista.
+      return Array.isArray(body.entities) ? body.entities.filter(isSyncEntity) : [...BASE_ENTITIES];
     },
 
     async register(email: string, password: string, registrationCode: string | null): Promise<void> {

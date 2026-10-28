@@ -43,6 +43,8 @@ export interface ScanLine {
   /** Número de envases (cada lectura suma uno). */
   count: number;
   location: Location;
+  /** Sitio concreto (una de las neveras, la despensa del garaje…); null = el primero del tipo. */
+  placeId: string | null;
   expiryDate: LocalDate | null;
   expiryKind: ExpiryKind;
   expiryEstimated: boolean;
@@ -87,6 +89,7 @@ export interface ResolvedInfo {
   source: 'manual' | 'openfoodfacts';
   /** Ubicación habitual del producto, si ya está en el catálogo. */
   location?: Location;
+  placeId?: string | null;
 }
 
 export type SessionAction =
@@ -96,7 +99,7 @@ export type SessionAction =
   | { type: 'retry'; code: string }
   | { type: 'setCount'; code: string; count: number }
   | { type: 'setName'; code: string; name: string }
-  | { type: 'setLocation'; code: string; location: Location }
+  | { type: 'setLocation'; code: string; location: Location; placeId?: string | null }
   | { type: 'setExpiry'; code: string; expiryDate: LocalDate | null; estimated?: boolean }
   | { type: 'setExpiryKind'; code: string; kind: ExpiryKind }
   | { type: 'remove'; code: string }
@@ -132,6 +135,7 @@ export function sessionReducer(s: ScanSession, a: SessionAction): ScanSession {
         source: 'manual',
         count: 1,
         location: 'pantry',
+        placeId: null,
         expiryDate: null,
         expiryKind: 'use_by',
         expiryEstimated: false,
@@ -153,6 +157,7 @@ export function sessionReducer(s: ScanSession, a: SessionAction): ScanSession {
         imageUrl: a.info.imageUrl ?? null,
         source: a.info.source,
         location: a.info.location ?? suggestLocation(a.info.category),
+        placeId: a.info.location ? (a.info.placeId ?? null) : null,
         errorCode: undefined,
       }));
     case 'failed':
@@ -167,7 +172,7 @@ export function sessionReducer(s: ScanSession, a: SessionAction): ScanSession {
       return update(s, a.code, (l) => ({ ...l, name, nameEdited: name.length > 0 }));
     }
     case 'setLocation':
-      return update(s, a.code, (l) => ({ ...l, location: a.location }));
+      return update(s, a.code, (l) => ({ ...l, location: a.location, placeId: a.placeId ?? null }));
     case 'setExpiry':
       return update(s, a.code, (l) => ({
         ...l,

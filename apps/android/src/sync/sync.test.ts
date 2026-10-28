@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { lot, milk, setupServices } from '../test-utils/fixtures';
 import { createSyncEngine } from './engine';
 import { createFakeServer } from './fakeServer';
+import { BASE_ENTITIES } from './records';
 
 type Server = ReturnType<typeof createFakeServer>;
 
@@ -162,7 +163,48 @@ describe('sincronización entre dos móviles del mismo hogar', () => {
     await a.join();
     await a.privacy.deleteAllData();
     expect(await a.engine.pendingCount()).toBe(0);
-    expect([...server.records.values()].filter((r) => !r.deleted)).toHaveLength(2);
+    expect([...server.records.values()].filter((r) => !r.deleted && r.entity !== 'place')).toHaveLength(2);
+  });
+
+  it('comparte los sitios personalizados y en qué sitio está cada lote', async () => {
+    const server = createFakeServer();
+    const a = await device(server);
+    const b = await device(server);
+    await a.join();
+    await b.join();
+    const garaje = await a.places.create({ name: 'Nevera garaje', kind: 'fridge' });
+    await a.inventory.addStock({ product: milk }, lot({ placeId: garaje.id }));
+    await a.engine.sync();
+    await b.engine.sync();
+    expect((await b.places.list()).map((p) => p.name)).toContain('Nevera garaje');
+    expect(await b.db.get('SELECT place_id FROM stock_lots')).toEqual({ place_id: garaje.id });
+  });
+
+  it('un móvil con la versión anterior no borra el sitio de un lote al editarlo', async () => {
+    const server = createFakeServer();
+    const a = await device(server);
+    await a.join();
+    const garaje = await a.places.create({ name: 'Nevera garaje', kind: 'fridge' });
+    const { lot: l } = await a.inventory.addStock({ product: milk }, lot({ placeId: garaje.id }));
+    await a.engine.sync();
+    // Simula una edición hecha desde la app 0.1 (no conoce placeId).
+    const rec = [...server.records.values()].find((r) => r.entity === 'stock_lot')!;
+    const { placeId: _omit, ...oldStyle } = rec.data!;
+    await server.transport.push([{ op_id: crypto.randomUUID(), entity: 'stock_lot', entity_id: l.id, kind: 'upsert', data: { ...oldStyle, notes: 'editado' } }]);
+    await a.engine.sync();
+    expect(await a.db.get('SELECT place_id, notes FROM stock_lots')).toEqual({ place_id: garaje.id, notes: 'editado' });
+  });
+
+  it('con un servidor sin sitios, los sitios esperan en la cola sin bloquear lo demás', async () => {
+    const server = createFakeServer();
+    const s = await setupServices();
+    const engine = createSyncEngine({ db: s.db, transport: server.transport, newId: randomUUID, entities: BASE_ENTITIES });
+    await engine.enable({ serverUrl: 'https://x', email: 'a@b.es', householdId: 'h', householdName: 'Casa', role: 'owner' });
+    await s.inventory.addStock({ product: milk }, lot());
+    await engine.sync({ initial: true });
+    expect([...server.records.values()].some((r) => r.entity === 'place')).toBe(false);
+    expect([...server.records.values()].some((r) => r.entity === 'stock_lot')).toBe(true);
+    expect(await engine.pendingCount()).toBe(4);
   });
 
   it('desconectarse deja los datos en el móvil y deja de enviar cambios', async () => {

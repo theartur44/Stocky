@@ -1,6 +1,6 @@
 import { daysBetween, formatLocalDate, type LocalDate } from '../domain/dates';
 import { getExpiryStatus, type ExpiryKind, type ExpiryStatus } from '../domain/expiry';
-import { CATEGORIES, LOCATIONS } from '../domain/models';
+import { CATEGORIES } from '../domain/models';
 import { formatQuantity, UNITS, type Unit } from '../domain/units';
 import { t } from '../i18n';
 import type { Tone } from './components';
@@ -42,7 +42,6 @@ export function expiryLabel(
 export const qty = (milli: number, unit: Unit) => formatQuantity(milli, unit);
 
 export const unitOptions = UNITS.map((u) => ({ value: u, label: t(`units.${u}`) }));
-export const locationOptions = LOCATIONS.map((l) => ({ value: l, label: t(`locations.${l}`) }));
 export const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: t(`categories.${c}`) }));
 export const expiryKindOptions = (['use_by', 'best_before'] as const).map((k) => ({
   value: k,

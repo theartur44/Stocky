@@ -11,6 +11,7 @@ import { t } from '../i18n';
 import * as notifications from '../integrations/notifications';
 import type { ChangeScope, ServiceContext } from '../services/context';
 import { createInventoryService, type InventoryService } from '../services/inventoryService';
+import { createPlacesService, type PlacesService } from '../services/placesService';
 import { createPrivacyService, type PrivacyService } from '../services/privacyService';
 import { createRecipeService, type RecipeService } from '../services/recipeService';
 import { createScanService, type ScanService } from '../services/scanService';
@@ -21,6 +22,7 @@ import { logError } from './errors';
 
 export interface Services {
   inventory: InventoryService;
+  places: PlacesService;
   shopping: ShoppingService;
   settings: SettingsService;
   recipes: RecipeService;
@@ -54,6 +56,7 @@ function buildServices(ctx: ServiceContext): Services {
   const inventory = createInventoryService(ctx);
   return {
     inventory,
+    places: createPlacesService(ctx),
     shopping: createShoppingService(ctx),
     settings: createSettingsService(ctx),
     recipes: createRecipeService(ctx, inventory),

@@ -16,7 +16,7 @@ def test_ready_checks_database():
 def test_health_is_versioned_and_minimal():
     r = client().get("/api/v1/health")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok", "api": "v1"}
+    assert r.json() == {"status": "ok", "api": "v1", "entities": ["place", "product", "stock_lot", "shopping_list", "shopping_item"]}
 
 
 def test_security_headers():

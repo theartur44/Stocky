@@ -26,6 +26,7 @@ export interface NewItem {
 
 export interface TransferOverride {
   location?: Location;
+  placeId?: string | null;
   expiryDate?: LocalDate | null;
   expiryKind?: ExpiryKind;
   expiryEstimated?: boolean;
@@ -163,6 +164,8 @@ export function createShoppingService(ctx: ServiceContext) {
             quantityMilli: item.quantityMilli,
             unit: item.unit,
             location: o.location ?? product.defaultLocation,
+            // Con un tipo distinto del habitual, el sitio se resuelve al primero de ese tipo.
+            placeId: o.placeId !== undefined ? o.placeId : o.location && o.location !== product.defaultLocation ? null : product.defaultPlaceId,
             addedOn: today,
             expiryDate: o.expiryDate ?? null,
             expiryKind: o.expiryKind ?? 'use_by',

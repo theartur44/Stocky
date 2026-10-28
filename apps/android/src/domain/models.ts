@@ -31,6 +31,8 @@ export interface Product {
   category: Category;
   defaultUnit: Unit;
   defaultLocation: Location;
+  /** Sitio concreto donde se suele guardar (de entre los del usuario). */
+  defaultPlaceId: string | null;
   /** Umbral de «pocas existencias» en milésimas de `defaultUnit`. */
   lowStockThresholdMilli: number | null;
   /** Contenido de un envase en milésimas de `defaultUnit` (null si se cuenta por unidades o no se sabe). */
@@ -48,7 +50,10 @@ export interface StockLot {
   productId: string;
   quantityMilli: number;
   unit: Unit;
+  /** Tipo de sitio (nevera, congelador…); coincide con el del sitio `placeId`. */
   location: Location;
+  /** Sitio concreto («Nevera cocina», «Trastero»…). */
+  placeId: string | null;
   addedOn: LocalDate;
   expiryDate: LocalDate | null;
   expiryKind: ExpiryKind;

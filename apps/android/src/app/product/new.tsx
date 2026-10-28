@@ -86,8 +86,8 @@ export default function NewProductScreen() {
           value={product}
           onChange={(v) => {
             // La ubicación habitual se propone también para el lote.
-            if (v.defaultLocation !== product.defaultLocation || v.defaultUnit !== product.defaultUnit) {
-              setLot({ ...lot, location: v.defaultLocation, unit: v.defaultUnit });
+            if (v.defaultPlaceId !== product.defaultPlaceId || v.defaultLocation !== product.defaultLocation || v.defaultUnit !== product.defaultUnit) {
+              setLot({ ...lot, location: v.defaultLocation, placeId: v.defaultPlaceId, unit: v.defaultUnit });
             }
             setProduct(v);
           }}

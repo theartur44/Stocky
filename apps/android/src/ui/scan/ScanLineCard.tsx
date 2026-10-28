@@ -3,14 +3,12 @@ import { memo, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { formatLocalDate, parseUserDate, toLocalDate } from '../../domain/dates';
-import { LOCATIONS } from '../../domain/models';
 import { EXPIRY_SHORTCUTS, lineQuantity, shortcutDate, type ScanLine, type SessionAction } from '../../domain/scanSession';
 import { formatQuantity } from '../../domain/units';
 import { t } from '../../i18n';
 import { CategoryAvatar, ChipGroup, IconButton, PressableScale, Stepper } from '../components';
+import { PlacePicker } from '../places';
 import { font, radius, spacing, useTheme } from '../theme';
-
-const LOCATION_ICONS = { fridge: 'thermometer-outline', freezer: 'snow-outline', pantry: 'file-tray-outline', other: 'ellipsis-horizontal' } as const;
 
 /** Tarjeta de una línea de la sesión de escaneo, con edición rápida al desplegarla. */
 export const ScanLineCard = memo(function ScanLineCard({
@@ -19,8 +17,11 @@ export const ScanLineCard = memo(function ScanLineCard({
   onToggle,
   dispatch,
   onRetry,
+  placeName,
 }: {
   line: ScanLine;
+  /** Nombre del sitio de la línea (lo resuelve la pantalla, una vez para todas). */
+  placeName: string;
   expanded: boolean;
   onToggle: () => void;
   dispatch: (a: SessionAction) => void;
@@ -78,7 +79,7 @@ export const ScanLineCard = memo(function ScanLineCard({
             </Text>
           </View>
           <Text style={{ color: colors.textMuted, fontSize: font.small }} numberOfLines={1}>
-            {formatQuantity(q.quantityMilli, q.unit)} · {t(`locations.${line.location}`)} · {expiryLabel}
+            {formatQuantity(q.quantityMilli, q.unit)} · {placeName} · {expiryLabel}
           </Text>
         </View>
         <Stepper
@@ -156,12 +157,12 @@ export const ScanLineCard = memo(function ScanLineCard({
               { value: 'best_before', label: t('expiryKinds.best_before') },
             ]}
           />
-          <ChipGroup
+          <PlacePicker
             label={t('lot.location')}
-            scroll
-            value={line.location}
-            onChange={(v) => dispatch({ type: 'setLocation', code: line.code, location: v })}
-            options={LOCATIONS.map((l) => ({ value: l, label: t(`locations.${l}`), icon: LOCATION_ICONS[l] }))}
+            placeId={line.placeId}
+            kind={line.location}
+            manage={false}
+            onChange={(p) => dispatch({ type: 'setLocation', code: line.code, location: p.kind, placeId: p.id })}
           />
           <PressableScale
             accessibilityRole="button"

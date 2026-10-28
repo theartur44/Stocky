@@ -11,7 +11,7 @@ import { authenticate, canLock } from '../integrations/biometrics';
 import * as notifications from '../integrations/notifications';
 import { useApp } from '../state/AppProvider';
 import { useSync } from '../state/SyncProvider';
-import { CURRENT_VERSION, useUpdates } from '../state/UpdateProvider';
+import { CURRENT_VERSION, REPO_URL, useUpdates } from '../state/UpdateProvider';
 import { useToast } from '../ui/toast';
 import { errorMessage } from '../state/errors';
 import type { Settings } from '../services/settingsService';
@@ -158,6 +158,12 @@ export default function SettingsScreen() {
       </Card>
 
       <Card>
+        <Title>{t('places.title')}</Title>
+        <Body muted>{t('places.settingsHint')}</Body>
+        <Button label={t('places.manage')} icon="file-tray-stacked-outline" variant="secondary" onPress={() => router.push('/places')} />
+      </Card>
+
+      <Card>
         <Title>{t('server.settingsCard')}</Title>
         <Body muted>
           {sync.status.enabled ? t('server.settingsOn', { household: sync.status.householdName ?? '' }) : t('server.settingsOff')}
@@ -269,6 +275,16 @@ export default function SettingsScreen() {
         <Body muted small>
           {t('settings.license')}
         </Body>
+        {REPO_URL ? (
+          <Button
+            label={t('settings.github')}
+            icon="logo-github"
+            variant="secondary"
+            compact
+            accessibilityHint={t('settings.githubHint')}
+            onPress={() => void Linking.openURL(REPO_URL!)}
+          />
+        ) : null}
         <Body muted small>
           {t('settings.offData')}
         </Body>

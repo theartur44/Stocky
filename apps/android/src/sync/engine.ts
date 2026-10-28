@@ -37,8 +37,12 @@ export function createSyncEngine(opts: {
   transport: SyncTransport;
   newId: () => string;
   clock?: () => Date;
+  /** Entidades que acepta el servidor; las demás esperan en la cola hasta que se actualice. */
+  entities?: readonly SyncEntity[];
 }) {
   const { db, transport, newId } = opts;
+  // Lista SQL fija de identificadores conocidos (no viene del usuario ni del servidor).
+  const entityList = (opts.entities ?? UPSERT_ORDER).filter(isSyncEntity).map((e) => `'${e}'`).join(',');
   const clock = opts.clock ?? (() => new Date());
   let running: Promise<SyncResult> | null = null;
 
@@ -50,7 +54,7 @@ export function createSyncEngine(opts: {
   async function claimBatch(): Promise<number> {
     return db.transaction(async (tx) => {
       const rows = await tx.all<{ seq: number; entity: SyncEntity; entity_id: string; kind: string; delta_milli: number | null }>(
-        'SELECT seq, entity, entity_id, kind, delta_milli FROM sync_outbox ORDER BY seq LIMIT ?',
+        `SELECT seq, entity, entity_id, kind, delta_milli FROM sync_outbox WHERE entity IN (${entityList}) ORDER BY seq LIMIT ?`,
         [PUSH_BATCH],
       );
       if (rows.length === 0) return 0;
@@ -79,7 +83,7 @@ export function createSyncEngine(opts: {
           );
         }
       }
-      await tx.run('DELETE FROM sync_outbox WHERE seq <= ?', [rows[rows.length - 1]!.seq]);
+      await tx.run(`DELETE FROM sync_outbox WHERE seq <= ? AND entity IN (${entityList})`, [rows[rows.length - 1]!.seq]);
       return rows.length;
     });
   }
@@ -212,7 +216,11 @@ export function createSyncEngine(opts: {
       await tx.exec(
         `DELETE FROM stock_lots WHERE product_id NOT IN (SELECT id FROM products);
          DELETE FROM shopping_items WHERE list_id NOT IN (SELECT id FROM shopping_lists);
-         UPDATE shopping_items SET product_id = NULL WHERE product_id IS NOT NULL AND product_id NOT IN (SELECT id FROM products);`,
+         UPDATE shopping_items SET product_id = NULL WHERE product_id IS NOT NULL AND product_id NOT IN (SELECT id FROM products);
+         UPDATE stock_lots SET place_id = (SELECT id FROM places WHERE places.kind = stock_lots.location ORDER BY position LIMIT 1)
+           WHERE place_id IS NULL OR place_id NOT IN (SELECT id FROM places);
+         UPDATE products SET default_place_id = (SELECT id FROM places WHERE places.kind = products.default_location ORDER BY position LIMIT 1)
+           WHERE default_place_id IS NULL OR default_place_id NOT IN (SELECT id FROM places);`,
       );
       await setApplying(tx, false);
     });

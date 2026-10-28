@@ -7,7 +7,7 @@ import { isSafeImageUrl } from '../domain/validation';
  * servidor. El servidor no interpreta el contenido (lo guarda cifrado), salvo
  * `quantityMilli` de los lotes para aplicar los ajustes de cantidad.
  */
-export type SyncEntity = 'product' | 'shopping_list' | 'stock_lot' | 'shopping_item';
+export type SyncEntity = 'place' | 'product' | 'shopping_list' | 'stock_lot' | 'shopping_item';
 
 type FieldKind = 'text' | 'text?' | 'int' | 'int?';
 type Field = readonly [column: string, key: string, kind: FieldKind];
@@ -25,6 +25,16 @@ const STAMPS: readonly Field[] = [
 ];
 
 export const ENTITIES: Record<SyncEntity, EntitySpec> = {
+  place: {
+    table: 'places',
+    nameKey: false,
+    fields: [
+      ['name', 'name', 'text'],
+      ['kind', 'kind', 'text'],
+      ['position', 'position', 'int'],
+      ...STAMPS,
+    ],
+  },
   product: {
     table: 'products',
     nameKey: true,
@@ -35,6 +45,7 @@ export const ENTITIES: Record<SyncEntity, EntitySpec> = {
       ['category', 'category', 'text'],
       ['default_unit', 'defaultUnit', 'text'],
       ['default_location', 'defaultLocation', 'text'],
+      ['default_place_id', 'defaultPlaceId', 'text?'],
       ['low_stock_threshold_milli', 'lowStockThresholdMilli', 'int?'],
       ['pack_quantity_milli', 'packQuantityMilli', 'int?'],
       ['image_url', 'imageUrl', 'text?'],
@@ -56,6 +67,7 @@ export const ENTITIES: Record<SyncEntity, EntitySpec> = {
       ['quantity_milli', 'quantityMilli', 'int'],
       ['unit', 'unit', 'text'],
       ['location', 'location', 'text'],
+      ['place_id', 'placeId', 'text?'],
       ['added_on', 'addedOn', 'text'],
       ['expiry_date', 'expiryDate', 'text?'],
       ['expiry_kind', 'expiryKind', 'text'],
@@ -84,7 +96,10 @@ export const ENTITIES: Record<SyncEntity, EntitySpec> = {
 };
 
 /** Orden de inserción (padres antes que hijos); los borrados van al revés. */
-export const UPSERT_ORDER: readonly SyncEntity[] = ['product', 'shopping_list', 'stock_lot', 'shopping_item'];
+export const UPSERT_ORDER: readonly SyncEntity[] = ['place', 'product', 'shopping_list', 'stock_lot', 'shopping_item'];
+
+/** Entidades que entiende un servidor antiguo (anterior a los sitios personalizables). */
+export const BASE_ENTITIES: readonly SyncEntity[] = ['product', 'shopping_list', 'stock_lot', 'shopping_item'];
 
 export const isSyncEntity = (v: unknown): v is SyncEntity => typeof v === 'string' && v in ENTITIES;
 
@@ -112,8 +127,11 @@ export function parseRecord(entity: SyncEntity, data: unknown): Record<string, S
   const spec = ENTITIES[entity];
   const out: Record<string, SqlValue> = {};
   for (const [column, key, kind] of spec.fields) {
-    const v = src[key] ?? null;
     const optional = kind.endsWith('?');
+    // Un campo opcional que no viene (registro de una versión anterior de la app)
+    // no se toca: así un móvil sin actualizar no borra, p. ej., el sitio de un lote.
+    if (optional && !(key in src)) continue;
+    const v = src[key] ?? null;
     if (v === null) {
       if (!optional) return null;
       out[column] = null;

@@ -4,7 +4,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { toLocalDate } from '../../domain/dates';
 import { getExpiryStatus, needsAttention } from '../../domain/expiry';
-import type { Location, ProductStockSummary } from '../../domain/models';
+import type { ProductStockSummary } from '../../domain/models';
 import { normalizeKey } from '../../domain/text';
 import { formatQuantity, type Unit } from '../../domain/units';
 import { t } from '../../i18n';
@@ -28,27 +28,18 @@ import {
   type IconName,
 } from '../../ui/components';
 import { expiryLabel, qty } from '../../ui/format';
+import { PLACE_ICONS, placeLabel, usePlaces } from '../../ui/places';
 import { font, radius, spacing, useTheme } from '../../ui/theme';
 import { useToast } from '../../ui/toast';
 
-type Filter = 'in_stock' | 'expiring' | 'out' | 'all' | Location;
-
-const FILTERS: { value: Filter; label: string; icon: IconName }[] = [
-  { value: 'in_stock', label: t('inventory.filterInStock'), icon: 'home-outline' },
-  { value: 'expiring', label: t('inventory.filterExpiring'), icon: 'time-outline' },
-  { value: 'fridge', label: t('locations.fridge'), icon: 'thermometer-outline' },
-  { value: 'freezer', label: t('locations.freezer'), icon: 'snow-outline' },
-  { value: 'pantry', label: t('locations.pantry'), icon: 'file-tray-outline' },
-  { value: 'out', label: t('inventory.filterOut'), icon: 'alert-circle-outline' },
-  { value: 'all', label: t('inventory.filterAll'), icon: 'apps-outline' },
-];
+/** Los filtros fijos, o `place:<id>` para lo que hay en un sitio concreto. */
+type Filter = 'in_stock' | 'expiring' | 'out' | 'all' | `place:${string}`;
 
 function matches(s: ProductStockSummary, filter: Filter, q: string, today: string, warnDays: number): boolean {
   if (filter === 'in_stock' && s.lots.length === 0) return false;
   if (filter === 'out' && s.lots.length > 0) return false;
   if (filter === 'expiring' && !s.lots.some((l) => needsAttention(getExpiryStatus(l, today, warnDays)))) return false;
-  if ((filter === 'fridge' || filter === 'freezer' || filter === 'pantry' || filter === 'other') && !s.lots.some((l) => l.location === filter))
-    return false;
+  if (filter.startsWith('place:') && !s.lots.some((l) => `place:${l.placeId}` === filter)) return false;
   if (!q) return true;
   return (
     normalizeKey(s.product.name).includes(q) ||
@@ -73,11 +64,24 @@ export default function InventoryScreen() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('in_stock');
   const q = useServiceQuery(() => services.inventory.listSummaries(), [services], ['inventory']);
+  const { places } = usePlaces();
+  const filters = useMemo<{ value: Filter; label: string; icon: IconName }[]>(
+    () => [
+      { value: 'in_stock', label: t('inventory.filterInStock'), icon: 'home-outline' },
+      { value: 'expiring', label: t('inventory.filterExpiring'), icon: 'time-outline' },
+      ...places.map((p) => ({ value: `place:${p.id}` as const, label: placeLabel(p), icon: PLACE_ICONS[p.kind] })),
+      { value: 'out', label: t('inventory.filterOut'), icon: 'alert-circle-outline' },
+      { value: 'all', label: t('inventory.filterAll'), icon: 'apps-outline' },
+    ],
+    [places],
+  );
+  // Si se borra el sitio elegido, se vuelve al filtro inicial.
+  const activeFilter: Filter = filters.some((f) => f.value === filter) ? filter : 'in_stock';
   const today = toLocalDate(new Date());
 
   const items = useMemo(() => {
     const nq = normalizeKey(query);
-    const list = (q.data ?? []).filter((s) => matches(s, filter, nq, today, settings.warnDays));
+    const list = (q.data ?? []).filter((s) => matches(s, activeFilter, nq, today, settings.warnDays));
     // Primero lo que caduca antes; los que no tienen fecha, por nombre.
     return list.sort((a, b) => {
       if (a.nearestExpiry && b.nearestExpiry) return a.nearestExpiry < b.nearestExpiry ? -1 : 1;
@@ -85,7 +89,7 @@ export default function InventoryScreen() {
       if (b.nearestExpiry) return 1;
       return a.product.name.localeCompare(b.product.name, 'es');
     });
-  }, [q.data, filter, query, today, settings.warnDays]);
+  }, [q.data, activeFilter, query, today, settings.warnDays]);
 
   if (q.loading) return <LoadingView />;
   if (q.error) return <ErrorView message={errorMessage(q.error)} onRetry={q.reload} />;
@@ -117,7 +121,7 @@ export default function InventoryScreen() {
               value={query}
               onChangeText={setQuery}
             />
-            <ChipGroup options={FILTERS} value={filter} onChange={setFilter} scroll />
+            <ChipGroup options={filters} value={activeFilter} onChange={setFilter} scroll />
             <View style={styles.countRow}>
               <Text style={{ color: colors.textMuted, fontWeight: '600', flex: 1 }}>{t('inventory.count', { count: items.length })}</Text>
               <Button compact variant="tonal" icon="add" label={t('inventory.addManual')} onPress={() => router.push('/product/new')} />

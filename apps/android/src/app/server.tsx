@@ -285,6 +285,7 @@ function Connected() {
         {row(t('server.rowLastSync'), status.syncing ? t('server.syncing') : formatTime(status.lastSyncAt))}
         {row(t('server.rowPending'), String(status.pending))}
         {status.lan ? <Notice tone="warning" message={t('server.lanWarning')} /> : null}
+        {status.serverOutdated ? <Notice tone="warning" message={t('server.outdated')} /> : null}
         {status.lastError ? <Notice tone="danger" message={errorText(new ConnectError(status.lastError as never))} /> : null}
         <Button label={t('server.syncNow')} icon="sync" onPress={() => void sync.syncNow()} loading={status.syncing} />
         <Body muted small>

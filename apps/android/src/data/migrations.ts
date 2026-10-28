@@ -1,3 +1,4 @@
+import { DEFAULT_PLACES } from '../domain/places';
 import type { SqlDatabase } from './sql';
 
 /**
@@ -13,6 +14,22 @@ export interface Migration {
   description: string;
   statements: string[];
 }
+
+type TriggerTables = readonly (readonly [table: string, entity: string])[];
+
+const V3_TABLES: TriggerTables = [
+  ['products', 'product'],
+  ['shopping_lists', 'shopping_list'],
+  ['shopping_items', 'shopping_item'],
+  ['stock_lots', 'stock_lot'],
+];
+const V3_LOT_COLUMNS = ['product_id', 'unit', 'location', 'added_on', 'expiry_date', 'expiry_kind', 'expiry_estimated', 'lot_code', 'notes'];
+const SYNC_TRIGGER_NAMES = (tables: TriggerTables) => [
+  ...tables.flatMap(([table]) => [`sync_${table}_insert`, `sync_${table}_delete`, `sync_${table}_update`]),
+  'sync_stock_lots_adjust',
+];
+
+const V4_TABLES: TriggerTables = [['places', 'place'], ...V3_TABLES];
 
 export const MIGRATIONS: Migration[] = [
   {
@@ -132,17 +149,51 @@ export const MIGRATIONS: Migration[] = [
       ...syncTriggers(),
     ],
   },
+  {
+    version: 4,
+    description: 'Sitios personalizables (varias neveras, trastero…) en lugar de cuatro ubicaciones fijas',
+    statements: [
+      // Los triggers de sincronización se rehacen para incluir los sitios.
+      ...SYNC_TRIGGER_NAMES(V3_TABLES).map((name) => `DROP TRIGGER IF EXISTS ${name}`),
+      // La cola admite la entidad nueva (SQLite no permite cambiar un CHECK: se rehace la tabla).
+      `CREATE TABLE sync_outbox_v4 (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity TEXT NOT NULL CHECK (entity IN ('place','product','stock_lot','shopping_list','shopping_item')),
+        entity_id TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('upsert','delete','adjust')),
+        delta_milli INTEGER
+      )`,
+      `INSERT INTO sync_outbox_v4 (seq, entity, entity_id, kind, delta_milli) SELECT seq, entity, entity_id, kind, delta_milli FROM sync_outbox`,
+      `DROP TABLE sync_outbox`,
+      `ALTER TABLE sync_outbox_v4 RENAME TO sync_outbox`,
+      `CREATE INDEX idx_sync_outbox_entity ON sync_outbox(entity, entity_id)`,
+      `CREATE TABLE places (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 40),
+        kind TEXT NOT NULL CHECK (kind IN ('fridge','freezer','pantry','other')),
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+      `ALTER TABLE stock_lots ADD COLUMN place_id TEXT REFERENCES places(id) ON DELETE SET NULL`,
+      `ALTER TABLE products ADD COLUMN default_place_id TEXT REFERENCES places(id) ON DELETE SET NULL`,
+      `CREATE INDEX idx_stock_lots_place ON stock_lots(place_id)`,
+      ...syncTriggers(V4_TABLES, [...V3_LOT_COLUMNS, 'place_id']),
+      // Se crean después de los triggers: si el móvil está conectado a un hogar, el cambio se comparte.
+      ...DEFAULT_PLACES.map(
+        (p, i) =>
+          `INSERT INTO places (id, name, kind, position, created_at, updated_at)
+           VALUES ('${p.id}', '${p.name}', '${p.kind}', ${i}, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`,
+      ),
+      `UPDATE stock_lots SET place_id = (SELECT id FROM places WHERE places.kind = stock_lots.location ORDER BY position LIMIT 1)`,
+      `UPDATE products SET default_place_id = (SELECT id FROM places WHERE places.kind = products.default_location ORDER BY position LIMIT 1)`,
+    ],
+  },
 ];
 
 /** Triggers que anotan en `sync_outbox` cada cambio local (solo con la sincronización activada). */
-function syncTriggers(): string[] {
+function syncTriggers(tables: TriggerTables = V3_TABLES, lotColumns: readonly string[] = V3_LOT_COLUMNS): string[] {
   const active = `(SELECT enabled = 1 AND applying = 0 FROM sync_state WHERE id = 1)`;
-  const tables: [table: string, entity: string][] = [
-    ['products', 'product'],
-    ['shopping_lists', 'shopping_list'],
-    ['shopping_items', 'shopping_item'],
-    ['stock_lots', 'stock_lot'],
-  ];
   const out: string[] = [];
   for (const [table, entity] of tables) {
     out.push(
@@ -152,7 +203,7 @@ function syncTriggers(): string[] {
        BEGIN INSERT INTO sync_outbox (entity, entity_id, kind) VALUES ('${entity}', OLD.id, 'delete'); END`,
     );
   }
-  for (const [table, entity] of tables.slice(0, 3)) {
+  for (const [table, entity] of tables.filter(([table]) => table !== 'stock_lots')) {
     out.push(
       `CREATE TRIGGER sync_${table}_update AFTER UPDATE ON ${table} WHEN ${active}
        BEGIN INSERT INTO sync_outbox (entity, entity_id, kind) VALUES ('${entity}', NEW.id, 'upsert'); END`,
@@ -160,7 +211,7 @@ function syncTriggers(): string[] {
   }
   // Lotes: si solo cambia la cantidad se envía la diferencia (delta), que se
   // suma en el servidor sin pisar lo que haya consumido otro móvil a la vez.
-  const sameLot = ['product_id', 'unit', 'location', 'added_on', 'expiry_date', 'expiry_kind', 'expiry_estimated', 'lot_code', 'notes']
+  const sameLot = lotColumns
     .map((c) => `NEW.${c} IS OLD.${c}`)
     .join(' AND ');
   out.push(

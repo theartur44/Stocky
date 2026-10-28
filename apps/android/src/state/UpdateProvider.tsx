@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AppState } from 'react-native';
 
 import { isNewerVersion } from '../domain/version';
-import { fetchLatestRelease, type ReleaseInfo } from '../integrations/updates';
+import { fetchLatestRelease, UPDATE_REPO_RE, type ReleaseInfo } from '../integrations/updates';
 import { useApp } from './AppProvider';
 
 /** Una consulta como mucho cada 12 h (salvo «Buscar actualizaciones» a mano). */
@@ -11,6 +11,8 @@ const CHECK_EVERY_MS = 12 * 60 * 60 * 1000;
 
 export const CURRENT_VERSION = Constants.expoConfig?.version ?? '0.0.0';
 const REPO = (Constants.expoConfig?.extra as { updates?: { repo?: string } } | undefined)?.updates?.repo ?? '';
+/** Página del proyecto en GitHub (null si la app no tiene repositorio configurado). */
+export const REPO_URL = UPDATE_REPO_RE.test(REPO) ? `https://github.com/${REPO}` : null;
 
 interface UpdateContextValue {
   /** Versión nueva disponible (aunque se haya cerrado el aviso). */

@@ -35,7 +35,7 @@ export default function LotEditScreen() {
   useEffect(() => {
     if (!q.data || draft) return;
     const { product, lot } = q.data;
-    setDraft(lot ? lotToDraft(lot) : emptyLotDraft({ unit: product.defaultUnit, location: product.defaultLocation }));
+    setDraft(lot ? lotToDraft(lot) : emptyLotDraft({ unit: product.defaultUnit, location: product.defaultLocation, placeId: product.defaultPlaceId }));
   }, [q.data, draft]);
 
   const [save, busy] = useAction(async () => {

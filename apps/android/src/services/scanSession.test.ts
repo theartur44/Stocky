@@ -74,6 +74,20 @@ describe('guardado de la sesión', () => {
     expect(sums.find((x) => x.product.barcode === B)!.product.name).toBe('Producto …0002');
   });
 
+  it('guarda cada línea en el sitio elegido', async () => {
+    const s = await setup();
+    const garaje = await s.places.create({ name: 'Congelador del garaje', kind: 'freezer' });
+    const session = run(
+      { type: 'scanned', code: A },
+      { type: 'resolved', code: A, info: { name: 'Guisantes', brand: null, category: 'frozen', unit: 'unit', source: 'openfoodfacts' } },
+      { type: 'setLocation', code: A, location: 'freezer', placeId: garaje.id },
+    );
+    await s.scan.saveToInventory(session.lines);
+    const [sum] = await s.inventory.listSummaries();
+    expect(sum!.lots[0]).toMatchObject({ location: 'freezer', placeId: garaje.id });
+    expect(sum!.product.defaultPlaceId).toBe(garaje.id);
+  });
+
   it('reutiliza productos existentes del catálogo', async () => {
     const s = await setup();
     const p = await s.inventory.createProduct({ ...milk, barcode: A });

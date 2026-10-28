@@ -20,6 +20,8 @@ export interface SyncStatus {
   lastSyncAt: string | null;
   lastError: string | null;
   pending: number;
+  /** El servidor es anterior a esta versión de la app: algunos datos (los sitios) no se comparten. */
+  serverOutdated: boolean;
   syncing: boolean;
 }
 
@@ -85,6 +87,7 @@ const EMPTY: SyncStatus = {
   lastError: null,
   pending: 0,
   syncing: false,
+  serverOutdated: false,
 };
 
 /** Cada cuánto se buscan cambios de otros móviles mientras la app está abierta. */
@@ -104,7 +107,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SyncStatus>(EMPTY);
   const [session, setSession] = useState<PendingSession | null>(null);
   const [mfa, setMfa] = useState<PendingMfa | null>(null);
-  const clientRef = useRef<{ url: string; api: ApiClient; engine: SyncEngine } | null>(null);
+  const clientRef = useRef<{ url: string; api: ApiClient; engine: SyncEngine; checked: boolean } | null>(null);
+  const [serverOutdated, setServerOutdated] = useState(false);
   const selfNotify = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -112,7 +116,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     (url: string) => {
       if (clientRef.current?.url !== url) {
         const api = createApiClient({ baseUrl: url, tokens: secureTokenStore, deviceName: deviceName() });
-        clientRef.current = { url, api, engine: createSyncEngine({ db, transport: api, newId: randomUUID }) };
+        clientRef.current = { url, api, engine: createSyncEngine({ db, transport: api, newId: randomUUID }), checked: false };
       }
       return clientRef.current;
     },
@@ -142,6 +146,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         lastError: row?.last_error ?? null,
         pending,
         syncing,
+        serverOutdated: false,
       });
       return row;
     },
@@ -154,7 +159,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       if (!row?.enabled || !row.server_url) return;
       setStatus((s) => ({ ...s, syncing: true }));
       try {
-        const r = await clientFor(row.server_url).engine.sync({ initial });
+        const client = clientFor(row.server_url);
+        if (!client.checked) {
+          // Una vez por sesión: qué sabe sincronizar el servidor (lo demás espera en la cola).
+          const entities = await client.api.health();
+          client.engine = createSyncEngine({ db, transport: client.api, newId: randomUUID, entities });
+          client.checked = true;
+          setServerOutdated(!entities.includes('place'));
+        }
+        const r = await client.engine.sync({ initial });
         if (r.pulled > 0) {
           // Datos nuevos de otros móviles: se refrescan las pantallas sin provocar otra sincronización.
           selfNotify.current = true;
@@ -232,7 +245,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<SyncContextValue>(
     () => ({
-      status,
+      status: { ...status, serverOutdated },
       session,
       mfa,
       api: status.serverUrl ? clientFor(status.serverUrl).api : session ? clientFor(session.serverUrl).api : null,
@@ -322,7 +335,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setSession(null);
       },
     }),
-    [status, session, mfa, clientFor, afterLogin, runSync, refreshStatus],
+    [status, serverOutdated, session, mfa, clientFor, afterLogin, runSync, refreshStatus],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

@@ -17,6 +17,7 @@ from .db import make_engine, make_session_factory
 from .deps import AppState
 from .ratelimit import RateLimiter
 from .routers import auth, households, sync
+from .schemas import SYNC_ENTITIES
 from .security import DataCipher, DecryptionError
 
 API_VERSION = "v1"
@@ -73,9 +74,9 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
         return JSONResponse({"detail": "internal_error"}, status_code=500)
 
     @app.get(f"{PREFIX}/health")
-    async def health() -> dict[str, str]:
-        # No revela versiones ni detalles internos.
-        return {"status": "ok", "api": API_VERSION}
+    async def health() -> dict[str, object]:
+        # No revela versiones ni detalles internos; solo qué tipos de datos sabe sincronizar.
+        return {"status": "ok", "api": API_VERSION, "entities": list(SYNC_ENTITIES)}
 
     @app.get(f"{PREFIX}/ready")
     def ready() -> JSONResponse:

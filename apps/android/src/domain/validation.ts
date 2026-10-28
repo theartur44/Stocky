@@ -21,6 +21,8 @@ export interface ProductInput {
   category: Category;
   defaultUnit: Unit;
   defaultLocation: Location;
+  /** Sitio concreto; si no se indica, el primero del tipo `defaultLocation`. */
+  defaultPlaceId?: string | null;
   lowStockThresholdMilli?: number | null;
   packQuantityMilli?: number | null;
   imageUrl?: string | null;
@@ -32,6 +34,8 @@ export interface LotInput {
   quantityMilli: number;
   unit: Unit;
   location: Location;
+  /** Sitio concreto; si no se indica, el primero del tipo `location`. */
+  placeId?: string | null;
   addedOn: LocalDate;
   expiryDate?: LocalDate | null;
   expiryKind: ExpiryKind;
@@ -49,6 +53,8 @@ function optionalText(value: string | null | undefined, max: number, field: stri
   if (v.length > max) errors[field] = 'errors.tooLong';
   return v;
 }
+
+const isPlaceId = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 64;
 
 function isValidQuantity(milli: unknown): milli is number {
   return typeof milli === 'number' && Number.isSafeInteger(milli) && milli > 0 && milli <= MAX_QUANTITY_MILLI;
@@ -99,6 +105,7 @@ export function validateProductInput(input: ProductInput): Required<ProductInput
     category: input.category,
     defaultUnit: input.defaultUnit,
     defaultLocation: input.defaultLocation,
+    defaultPlaceId: isPlaceId(input.defaultPlaceId) ? input.defaultPlaceId : null,
     lowStockThresholdMilli: threshold,
     packQuantityMilli: pack,
     imageUrl,
@@ -125,6 +132,7 @@ export function validateLotInput(input: LotInput): Required<LotInput> {
     quantityMilli: input.quantityMilli,
     unit: input.unit,
     location: input.location,
+    placeId: isPlaceId(input.placeId) ? input.placeId : null,
     addedOn: input.addedOn,
     expiryDate,
     expiryKind: input.expiryKind,

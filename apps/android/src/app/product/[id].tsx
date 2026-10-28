@@ -26,12 +26,14 @@ import {
   Title,
 } from '../../ui/components';
 import { expiryLabel, qty } from '../../ui/format';
+import { usePlaces } from '../../ui/places';
 import { spacing } from '../../ui/theme';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const productId = String(id);
   const { services, settings } = useApp();
+  const { nameOf } = usePlaces();
   const [consuming, setConsuming] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; tone: 'neutral' | 'danger' } | null>(null);
 
@@ -128,7 +130,7 @@ export default function ProductDetailScreen() {
           return (
             <View key={lot.id} style={{ gap: spacing.sm }}>
               <ListRow
-                title={`${qty(lot.quantityMilli, lot.unit)} · ${t(`locations.${lot.location}`)}`}
+                title={`${qty(lot.quantityMilli, lot.unit)} · ${nameOf(lot)}`}
                 subtitle={[
                   lot.expiryDate ? t(`expiryKinds.${lot.expiryKind}`) : null,
                   `${t('lot.addedOn')}: ${formatLocalDate(lot.addedOn)}`,

@@ -10,6 +10,7 @@ describe('migraciones de SQLite', () => {
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
     );
     expect(tables.map((t) => t.name)).toEqual([
+      'places',
       'products',
       'settings',
       'shopping_items',

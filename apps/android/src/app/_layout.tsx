@@ -86,6 +86,7 @@ function Navigation() {
             <Stack.Screen name="scan" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
             <Stack.Screen name="expiring" options={{ title: t('expiring.title') }} />
             <Stack.Screen name="settings" options={{ title: t('settings.title') }} />
+            <Stack.Screen name="places" options={{ title: t('places.title') }} />
             <Stack.Screen name="server" options={{ title: t('server.title') }} />
             <Stack.Screen name="account" options={{ title: t('account.title') }} />
             <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade', gestureEnabled: false }} />

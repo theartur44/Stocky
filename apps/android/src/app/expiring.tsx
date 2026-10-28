@@ -8,6 +8,7 @@ import { errorMessage } from '../state/errors';
 import { useServiceQuery } from '../state/hooks';
 import { Backdrop, Badge, Body, CategoryAvatar, EmptyState, ErrorView, Glass, ListRow, LoadingView, Notice } from '../ui/components';
 import { expiryLabel, qty } from '../ui/format';
+import { usePlaces } from '../ui/places';
 import { spacing } from '../ui/theme';
 
 const HORIZON_DAYS = 365;
@@ -15,6 +16,7 @@ const HORIZON_DAYS = 365;
 /** Todos los lotes con fecha, ordenados por proximidad (los vencidos primero). */
 export default function ExpiringScreen() {
   const { services, settings } = useApp();
+  const { nameOf } = usePlaces();
   const q = useServiceQuery(
     () => services.inventory.listExpiring(toLocalDate(new Date()), HORIZON_DAYS),
     [services],
@@ -47,7 +49,7 @@ export default function ExpiringScreen() {
           <ListRow
             left={<CategoryAvatar category={lot.product.category} size={40} />}
             title={lot.product.name}
-            subtitle={`${qty(lot.quantityMilli, lot.unit)} · ${t(`locations.${lot.location}`)} · ${t(`expiryKinds.${lot.expiryKind}`)}`}
+            subtitle={`${qty(lot.quantityMilli, lot.unit)} · ${nameOf(lot)} · ${t(`expiryKinds.${lot.expiryKind}`)}`}
             right={<Badge label={e.label} tone={e.tone} />}
             onPress={() => router.push({ pathname: '/product/[id]', params: { id: lot.productId } })}
           />

@@ -30,6 +30,7 @@ import {
   type IconName,
 } from '../../ui/components';
 import { expiryLabel, qty } from '../../ui/format';
+import { usePlaces } from '../../ui/places';
 import { font, radius, spacing, useTheme, withAlpha } from '../../ui/theme';
 import { useToast } from '../../ui/toast';
 
@@ -43,6 +44,7 @@ function greeting(now: Date): string {
 export default function HomeScreen() {
   const { services, settings } = useApp();
   const { colors, dark } = useTheme();
+  const { nameOf } = usePlaces();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const q = useServiceQuery(async () => {
@@ -160,7 +162,7 @@ export default function HomeScreen() {
                     <ListRow
                       left={<CategoryAvatar category={lot.product.category} size={40} />}
                       title={lot.product.name}
-                      subtitle={`${qty(lot.quantityMilli, lot.unit)} · ${t(`locations.${lot.location}`)}`}
+                      subtitle={`${qty(lot.quantityMilli, lot.unit)} · ${nameOf(lot)}`}
                       right={<Badge label={e.label} tone={e.tone} />}
                       onPress={() => router.push({ pathname: '/product/[id]', params: { id: lot.productId } })}
                     />

@@ -8,7 +8,8 @@ import { formatMilli, parseQuantity, type Unit } from '../domain/units';
 import type { LotInput, ProductInput } from '../domain/validation';
 import { t } from '../i18n';
 import { Body, Button, ChipGroup, SwitchRow, TextField } from './components';
-import { categoryOptions, expiryKindOptions, locationOptions, unitOptions } from './format';
+import { categoryOptions, expiryKindOptions, unitOptions } from './format';
+import { PlacePicker } from './places';
 import { spacing } from './theme';
 
 // ------------------------------------------------------------------ producto
@@ -20,6 +21,8 @@ export interface ProductDraft {
   category: Category;
   defaultUnit: Unit;
   defaultLocation: Location;
+  /** Sitio concreto (null = el primero del tipo). */
+  defaultPlaceId: string | null;
   lowStock: string;
   /** Contenido de un envase (vacío si no se sabe o se cuenta por unidades). */
   pack: string;
@@ -36,6 +39,7 @@ export function emptyProductDraft(partial: Partial<ProductDraft> = {}): ProductD
     category: 'other',
     defaultUnit: 'unit',
     defaultLocation: 'pantry',
+    defaultPlaceId: null,
     lowStock: '',
     pack: '',
     notes: '',
@@ -68,6 +72,7 @@ export function productDraftToInput(d: ProductDraft): { input?: ProductInput; er
       category: d.category,
       defaultUnit: d.defaultUnit,
       defaultLocation: d.defaultLocation,
+      defaultPlaceId: d.defaultPlaceId,
       lowStockThresholdMilli: threshold,
       packQuantityMilli: pack,
       imageUrl: d.imageUrl,
@@ -107,11 +112,11 @@ export function ProductFields({
       />
       <ChipGroup label={t('product.category')} options={categoryOptions} value={value.category} onChange={set('category')} />
       <ChipGroup label={t('product.defaultUnit')} options={unitOptions} value={value.defaultUnit} onChange={set('defaultUnit')} />
-      <ChipGroup
+      <PlacePicker
         label={t('product.defaultLocation')}
-        options={locationOptions}
-        value={value.defaultLocation}
-        onChange={set('defaultLocation')}
+        placeId={value.defaultPlaceId}
+        kind={value.defaultLocation}
+        onChange={(p) => onChange({ ...value, defaultPlaceId: p.id, defaultLocation: p.kind })}
       />
       {value.defaultUnit !== 'unit' ? (
         <TextField
@@ -151,6 +156,8 @@ export interface LotDraft {
   quantity: string;
   unit: Unit;
   location: Location;
+  /** Sitio concreto (null = el primero del tipo). */
+  placeId: string | null;
   addedOn: LocalDate;
   expiry: string;
   expiryKind: ExpiryKind;
@@ -164,6 +171,7 @@ export function emptyLotDraft(partial: Partial<LotDraft> = {}): LotDraft {
     quantity: '1',
     unit: 'unit',
     location: 'pantry',
+    placeId: null,
     addedOn: toLocalDate(new Date()),
     expiry: '',
     expiryKind: 'use_by',
@@ -179,6 +187,7 @@ export function lotToDraft(l: LotInput): LotDraft {
     quantity: formatMilli(l.quantityMilli),
     unit: l.unit,
     location: l.location,
+    placeId: l.placeId ?? null,
     addedOn: l.addedOn,
     expiry: l.expiryDate ? formatLocalDate(l.expiryDate) : '',
     expiryKind: l.expiryKind,
@@ -204,6 +213,7 @@ export function lotDraftToInput(d: LotDraft): { input?: LotInput; errors: Record
       quantityMilli,
       unit: d.unit,
       location: d.location,
+      placeId: d.placeId,
       addedOn: d.addedOn,
       expiryDate,
       expiryKind: d.expiryKind,
@@ -237,7 +247,12 @@ export function LotFields({
         maxLength={12}
       />
       <ChipGroup label={t('lot.unit')} options={unitOptions} value={value.unit} onChange={set('unit')} />
-      <ChipGroup label={t('lot.location')} options={locationOptions} value={value.location} onChange={set('location')} />
+      <PlacePicker
+        label={t('lot.location')}
+        placeId={value.placeId}
+        kind={value.location}
+        onChange={(p) => onChange({ ...value, placeId: p.id, location: p.kind })}
+      />
       <ChipGroup label={t('lot.expiryKind')} options={expiryKindOptions} value={value.expiryKind} onChange={set('expiryKind')} />
       <Body muted small>
         {t(`expiryKindHelp.${value.expiryKind}`)}

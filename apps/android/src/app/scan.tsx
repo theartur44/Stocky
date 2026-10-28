@@ -36,6 +36,7 @@ import { useApp } from '../state/AppProvider';
 import { errorMessage, logError } from '../state/errors';
 import { resolveScan } from '../services/scanService';
 import { Button, IconButton, LoadingView, PressableScale } from '../ui/components';
+import { usePlaces } from '../ui/places';
 import { ScanLineCard } from '../ui/scan/ScanLineCard';
 import { elevation, font, radius, spacing, useTheme, withAlpha } from '../ui/theme';
 import { useToast } from '../ui/toast';
@@ -63,6 +64,7 @@ export default function QuickScanScreen() {
   const params = useLocalSearchParams<{ mode?: string; listId?: string }>();
   const { services } = useApp();
   const { colors } = useTheme();
+  const { nameOf } = usePlaces();
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -145,6 +147,7 @@ export default function QuickScanScreen() {
             imageUrl: p.imageUrl,
             source: p.source,
             location: p.defaultLocation,
+            placeId: p.defaultPlaceId,
           };
           act({ type: 'resolved', code, info });
           return;
@@ -526,6 +529,7 @@ export default function QuickScanScreen() {
               }}
               dispatch={dispatch}
               onRetry={retry}
+              placeName={nameOf(item)}
             />
           )}
         />

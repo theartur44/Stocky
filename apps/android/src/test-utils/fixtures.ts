@@ -6,6 +6,7 @@ import type { SerializedDatabase } from '../data/sql';
 import { openTestDatabase } from '../data/testing/nodeConnection';
 import type { ChangeScope, ServiceContext } from '../services/context';
 import { createInventoryService } from '../services/inventoryService';
+import { createPlacesService } from '../services/placesService';
 import { createPrivacyService } from '../services/privacyService';
 import { createSettingsService } from '../services/settingsService';
 import { createShoppingService } from '../services/shoppingService';
@@ -37,6 +38,7 @@ export async function setupServices(nowIso = '2026-10-13T10:00:00') {
     clock,
     changes,
     inventory: createInventoryService(ctx),
+    places: createPlacesService(ctx),
     shopping: createShoppingService(ctx),
     settings: createSettingsService(ctx),
     privacy: createPrivacyService(ctx),

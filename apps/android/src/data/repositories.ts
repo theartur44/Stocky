@@ -15,10 +15,88 @@ import type {
   StockLot,
   StockLotWithProduct,
 } from '../domain/models';
+import { DEFAULT_PLACES, type Place } from '../domain/places';
 import type { LotInput, ProductInput } from '../domain/validation';
 import { normalizeKey } from '../domain/text';
 import type { Unit } from '../domain/units';
 import type { SqlExecutor } from './sql';
+
+// ---------------------------------------------------------------- sitios
+
+interface PlaceRow {
+  id: string;
+  name: string;
+  kind: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+const toPlace = (r: PlaceRow): Place => ({
+  id: r.id,
+  name: r.name,
+  kind: r.kind as Location,
+  position: r.position,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});
+
+/**
+ * Sitio y tipo con los que se guarda un lote o un producto. Un sitio que no
+ * existe (p. ej. borrado en otro móvil) se sustituye por el primero del tipo;
+ * el tipo guardado siempre es el del sitio.
+ */
+export async function resolvePlace(db: SqlExecutor, placeId: string | null | undefined, kind: Location): Promise<[Location, string | null]> {
+  const exact = placeId ? await db.get<PlaceRow>('SELECT * FROM places WHERE id = ?', [placeId]) : null;
+  const place =
+    exact ??
+    (await db.get<PlaceRow>('SELECT * FROM places WHERE kind = ? ORDER BY position, created_at LIMIT 1', [kind])) ??
+    (await db.get<PlaceRow>('SELECT * FROM places ORDER BY position, created_at LIMIT 1'));
+  return place ? [place.kind as Location, place.id] : [kind, null];
+}
+
+export const placeRepo = {
+  async list(db: SqlExecutor): Promise<Place[]> {
+    return (await db.all<PlaceRow>('SELECT * FROM places ORDER BY position, created_at')).map(toPlace);
+  },
+
+  async get(db: SqlExecutor, id: string): Promise<Place | null> {
+    const r = await db.get<PlaceRow>('SELECT * FROM places WHERE id = ?', [id]);
+    return r ? toPlace(r) : null;
+  },
+
+  async insert(db: SqlExecutor, id: string, p: { name: string; kind: Location }, position: number, now: string): Promise<Place> {
+    await db.run('INSERT INTO places (id, name, kind, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)', [
+      id,
+      p.name,
+      p.kind,
+      position,
+      now,
+      now,
+    ]);
+    return (await placeRepo.get(db, id))!;
+  },
+
+  async update(db: SqlExecutor, id: string, p: { name: string; kind: Location }, now: string): Promise<number> {
+    return (await db.run('UPDATE places SET name = ?, kind = ?, updated_at = ? WHERE id = ?', [p.name, p.kind, now, id])).changes;
+  },
+
+  async setPosition(db: SqlExecutor, id: string, position: number, now: string): Promise<void> {
+    await db.run('UPDATE places SET position = ?, updated_at = ? WHERE id = ? AND position <> ?', [position, now, id, position]);
+  },
+
+  /** Cuántos lotes hay en cada sitio. */
+  async lotCounts(db: SqlExecutor): Promise<Record<string, number>> {
+    const rows = await db.all<{ place_id: string; n: number }>(
+      'SELECT place_id, COUNT(*) AS n FROM stock_lots WHERE place_id IS NOT NULL GROUP BY place_id',
+    );
+    return Object.fromEntries(rows.map((r) => [r.place_id, r.n]));
+  },
+
+  async delete(db: SqlExecutor, id: string): Promise<number> {
+    return (await db.run('DELETE FROM places WHERE id = ?', [id])).changes;
+  },
+};
 
 // ---------------------------------------------------------------- productos
 
@@ -30,6 +108,7 @@ interface ProductRow {
   category: string;
   default_unit: string;
   default_location: string;
+  default_place_id: string | null;
   low_stock_threshold_milli: number | null;
   pack_quantity_milli: number | null;
   image_url: string | null;
@@ -48,6 +127,7 @@ function toProduct(r: ProductRow): Product {
     category: r.category as Category,
     defaultUnit: r.default_unit as Unit,
     defaultLocation: r.default_location as Location,
+    defaultPlaceId: r.default_place_id ?? null,
     lowStockThresholdMilli: r.low_stock_threshold_milli,
     packQuantityMilli: r.pack_quantity_milli ?? null,
     imageUrl: r.image_url,
@@ -61,9 +141,9 @@ function toProduct(r: ProductRow): Product {
 export const productRepo = {
   async insert(db: SqlExecutor, id: string, p: Required<ProductInput>, now: string): Promise<Product> {
     await db.run(
-      `INSERT INTO products (id, name, name_key, brand, barcode, category, default_unit, default_location,
+      `INSERT INTO products (id, name, name_key, brand, barcode, category, default_unit, default_location, default_place_id,
          low_stock_threshold_milli, pack_quantity_milli, image_url, source, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         p.name,
@@ -72,7 +152,7 @@ export const productRepo = {
         p.barcode,
         p.category,
         p.defaultUnit,
-        p.defaultLocation,
+        ...(await resolvePlace(db, p.defaultPlaceId, p.defaultLocation)),
         p.lowStockThresholdMilli,
         p.packQuantityMilli,
         p.imageUrl,
@@ -88,8 +168,8 @@ export const productRepo = {
   async update(db: SqlExecutor, id: string, p: Required<ProductInput>, now: string): Promise<number> {
     const r = await db.run(
       `UPDATE products SET name = ?, name_key = ?, brand = ?, barcode = ?, category = ?, default_unit = ?,
-         default_location = ?, low_stock_threshold_milli = ?, pack_quantity_milli = ?, image_url = ?, source = ?,
-         notes = ?, updated_at = ?
+         default_location = ?, default_place_id = ?, low_stock_threshold_milli = ?, pack_quantity_milli = ?, image_url = ?,
+         source = ?, notes = ?, updated_at = ?
        WHERE id = ?`,
       [
         p.name,
@@ -98,7 +178,7 @@ export const productRepo = {
         p.barcode,
         p.category,
         p.defaultUnit,
-        p.defaultLocation,
+        ...(await resolvePlace(db, p.defaultPlaceId, p.defaultLocation)),
         p.lowStockThresholdMilli,
         p.packQuantityMilli,
         p.imageUrl,
@@ -146,6 +226,7 @@ interface LotRow {
   quantity_milli: number;
   unit: string;
   location: string;
+  place_id: string | null;
   added_on: string;
   expiry_date: string | null;
   expiry_kind: string;
@@ -169,6 +250,7 @@ function toLot(r: LotRow): StockLot {
     quantityMilli: r.quantity_milli,
     unit: r.unit as Unit,
     location: r.location as Location,
+    placeId: r.place_id ?? null,
     addedOn: r.added_on as LocalDate,
     expiryDate: r.expiry_date as LocalDate | null,
     expiryKind: r.expiry_kind as ExpiryKind,
@@ -186,15 +268,15 @@ const LOT_ORDER = 'ORDER BY (l.expiry_date IS NULL), l.expiry_date, l.created_at
 export const lotRepo = {
   async insert(db: SqlExecutor, id: string, productId: string, l: Required<LotInput>, now: string): Promise<StockLot> {
     await db.run(
-      `INSERT INTO stock_lots (id, product_id, quantity_milli, unit, location, added_on, expiry_date, expiry_kind,
+      `INSERT INTO stock_lots (id, product_id, quantity_milli, unit, location, place_id, added_on, expiry_date, expiry_kind,
          expiry_estimated, lot_code, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         productId,
         l.quantityMilli,
         l.unit,
-        l.location,
+        ...(await resolvePlace(db, l.placeId, l.location)),
         l.addedOn,
         l.expiryDate,
         l.expiryKind,
@@ -210,13 +292,13 @@ export const lotRepo = {
 
   async update(db: SqlExecutor, id: string, l: Required<LotInput>, now: string): Promise<number> {
     const r = await db.run(
-      `UPDATE stock_lots SET quantity_milli = ?, unit = ?, location = ?, added_on = ?, expiry_date = ?,
+      `UPDATE stock_lots SET quantity_milli = ?, unit = ?, location = ?, place_id = ?, added_on = ?, expiry_date = ?,
          expiry_kind = ?, expiry_estimated = ?, lot_code = ?, notes = ?, updated_at = ?
        WHERE id = ?`,
       [
         l.quantityMilli,
         l.unit,
-        l.location,
+        ...(await resolvePlace(db, l.placeId, l.location)),
         l.addedOn,
         l.expiryDate,
         l.expiryKind,
@@ -485,6 +567,18 @@ export async function deleteAllUserData(db: SqlExecutor): Promise<void> {
      DELETE FROM shopping_lists;
      DELETE FROM stock_lots;
      DELETE FROM products;
+     DELETE FROM places;
      DELETE FROM settings;`,
   );
+  // Vuelven los sitios iniciales.
+  for (const [i, p] of DEFAULT_PLACES.entries()) {
+    await db.run('INSERT INTO places (id, name, kind, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)', [
+      p.id,
+      p.name,
+      p.kind,
+      i,
+      '2026-01-01T00:00:00.000Z',
+      '2026-01-01T00:00:00.000Z',
+    ]);
+  }
 }
