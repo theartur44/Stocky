@@ -8,13 +8,16 @@ Funciona **sin conexión y sin cuenta**: todo se guarda en tu móvil. Si quieres
 
 ## Qué puedes hacer
 
-- **Escanear la compra en un momento.** Abre el escáner y ve pasando productos: cada código se añade al instante y los datos (nombre, marca, tamaño) se buscan solos en [Open Food Facts](https://world.openfoodfacts.org), solo si das permiso. Al terminar, lo guardas todo de una vez en casa o en la lista.
-- **Inventario por ubicación:** nevera, congelador o despensa, con cantidades, envases y fechas. Cuando gastas algo, se descuenta primero lo que caduca antes.
+- **Escanear la compra en un momento.** Abre el escáner y ve pasando productos: cada código se añade al instante y los datos (nombre, marca, tamaño) se buscan solos en [Open Food Facts](https://world.openfoodfacts.org), solo si das permiso. Al terminar, lo guardas todo de una vez en casa o en la lista. Con el modo **Gastar**, cada lectura descuenta un envase.
+- **Tus propios sitios:** varias neveras, el congelador del garaje, la despensa, el trastero… con cantidades, envases y fechas. Cuando gastas algo, se descuenta primero lo que caduca antes.
 - **Fechas de caducidad y de consumo preferente**, con avisos en el móvil unos días antes. Por defecto, los avisos no muestran nombres de productos en la pantalla de bloqueo.
-- **Lista de la compra** rápida: escribe «2 leche» o «tomates 1 kg», recibe sugerencias de lo que se está acabando y, al volver de comprar, pasa lo comprado al inventario con un toque.
+- **Un toque basta:** marca algo como gastado, ábrelo (la fecha se ajusta a lo que dura abierto), congélalo, muévelo de sitio o tíralo, y **deshazlo** si te equivocas. El **historial** te dice cuánto se tira.
+- **Lista de la compra** rápida: escribe «2 leche» o «tomates 1 kg», recibe sugerencias de lo que se está acabando, agrupada por categorías y para **compartir por WhatsApp**. Al volver de comprar, pasa lo comprado al inventario con un toque.
 - **Recetas** sugeridas con lo que tienes, empezando por lo que caduca antes.
-- **Hogar compartido (opcional):** con tu servidor, toda la familia ve el mismo inventario y la misma lista, también sin conexión. Los cambios se sincronizan solos.
+- **Hogar compartido (opcional):** con tu servidor, toda la familia ve el mismo inventario y la misma lista, también sin conexión. Los cambios se sincronizan solos, y el hogar (miembros y permisos) se gestiona desde la app.
+- **Copia de seguridad:** exporta tus datos a un fichero para pasarlos a otro móvil, o el inventario a una hoja de cálculo (CSV).
 - **Seguridad:** cuentas con verificación en dos pasos y desbloqueo de la app con huella.
+- **En tu idioma:** español, inglés, francés y portugués (Brasil).
 - **A tu gusto:** seis colores, modo claro, oscuro o automático, y un estilo moderno tipo «cristal».
 
 ## Instalar la app

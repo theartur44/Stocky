@@ -178,6 +178,17 @@ Con un túnel, instala Stocky en **modo IP** (no en modo dominio: el HTTPS lo po
 
 En ambos casos la conexión va cifrada y en la app se usa la dirección `https://`.
 
+## Detrás de otro proxy (Nginx Proxy Manager, un túnel…)
+
+Si delante de Stocky hay otro proxy que pone el HTTPS, Stocky ve todas las conexiones con la IP de ese proxy. Funciona igual, pero el límite de intentos fallidos (de inicio de sesión, por ejemplo) se comparte entre todos los móviles.
+
+Para que cuente por cada móvil, indica la IP del proxy:
+
+1. Mira la IP que se repite en todas las líneas de `./stocky.sh logs` (es la del proxy tal como llega a Stocky).
+2. Ejecuta `./stocky.sh configurar` y escríbela cuando pregunte por el proxy, o pon `STOCKY_TRUSTED_PROXIES=IP/32` en `.env` y ejecuta `./stocky.sh reiniciar`.
+
+Pon solo IPs concretas: si confías en un rango amplio, cualquiera de ese rango podría hacerse pasar por otra IP.
+
 ## Problemas frecuentes
 
 | Síntoma | Causa probable |

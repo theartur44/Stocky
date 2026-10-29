@@ -28,8 +28,10 @@
 | Datos | Ejemplos | Dónde se guardan | ¿Salen del dispositivo? |
 |---|---|---|---|
 | Inventario | Productos, marcas, cantidades, ubicaciones, fechas de caducidad, lotes, notas | Base de datos local de la app (almacenamiento privado de Android) | No |
-| Listas de la compra | Artículos, cantidades, estado | Base de datos local | No |
-| Ajustes | Días de antelación, hora de avisos, preferencias de recetas, decisión sobre la consulta externa y su fecha | Base de datos local | No |
+| Listas de la compra | Artículos, cantidades, estado | Base de datos local | No (salvo que la compartas tú, ver §7) |
+| Sitios de la casa | Nombres que pones a tus neveras, armarios, etc. | Base de datos local | No |
+| Historial | Qué se ha gastado o tirado, cuánto y cuándo | Base de datos local (no se sincroniza) | No |
+| Ajustes | Idioma, días de antelación, hora de avisos, preferencias de recetas, decisión sobre la consulta externa y su fecha | Base de datos local | No |
 | Código de barras escaneado | 8-14 dígitos de un producto comercial | Se guarda en el producto si lo añades | Solo si has permitido la consulta y el producto no está ya en tu dispositivo (ver §5.1) |
 | Imagen de la cámara | Fotograma de vídeo durante el escaneo | **No se guarda** | No (se analiza en el dispositivo) |
 | Avisos programados | Fecha, número de productos y, si lo activas, sus nombres | Sistema de notificaciones de Android | No |
@@ -75,7 +77,9 @@ El escáner usa la biblioteca de Google ML Kit incluida en la app. El análisis 
 ## 7. Cuánto tiempo se conservan
 
 - Datos locales: hasta que los borres (individualmente o con **Ajustes → Eliminar todos mis datos**) o desinstales la app.
-- Las **copias de seguridad automáticas de Android están desactivadas** para Stocky: los datos no se copian a la nube de Google. Si desinstalas la app, los datos se pierden.
+- Las **copias de seguridad automáticas de Android están desactivadas** para Stocky: los datos no se copian a la nube de Google. Si desinstalas la app, los datos se pierden, salvo que hayas hecho una copia tú.
+- **Copia de seguridad y CSV (a petición):** en Ajustes puedes exportar tus datos a un fichero (JSON) o el inventario a una hoja de cálculo (CSV). La app lo entrega con la hoja de compartir de Android y **tú eliges** dónde guardarlo o a quién enviarlo; Stocky no lo sube a ningún sitio y borra su copia temporal al minuto. El fichero **no va cifrado**.
+- **Compartir la lista de la compra (a petición):** envía el texto de la lista a la app que elijas (mensajería, correo…).
 - Datos recibidos por terceros: según sus políticas. Detalle en `retencion-y-eliminacion.md`.
 
 ## 8. Tus derechos
@@ -110,7 +114,7 @@ La app permite conectar, de forma **opcional y desactivada por defecto**, un ser
 
 - **Qué se envía al activarlo:** el correo y la contraseña de la cuenta (la contraseña solo para iniciar sesión; el servidor guarda únicamente un resumen Argon2id), el nombre del hogar y el contenido del inventario y de las listas de la compra. Los ajustes del móvil (avisos, tema, consentimientos) **no** se envían.
 - **Cómo se protege:** con un dominio, la conexión va cifrada (HTTPS). Con una dirección de red local la conexión va sin cifrar dentro de esa red y la app lo avisa. En el servidor, el inventario, las listas, los correos y los nombres se guardan cifrados (AES-256-GCM). La sesión se guarda en el almacén seguro de Android.
-- **Quién lo ve:** los miembros del mismo hogar y quien administra el servidor.
+- **Quién lo ve:** los miembros del mismo hogar y quien administra el servidor. Los miembros de un hogar ven el correo de los demás miembros, para poder gestionarlo (invitar, cambiar permisos o expulsar).
 - **Verificación en dos pasos (opcional):** el servidor guarda cifrado el secreto que genera los códigos y solo el resumen (hash) de los códigos de recuperación.
 - **Desbloqueo con huella (opcional):** lo comprueba Android; Stocky no recibe ni guarda la huella ni ningún dato biométrico.
 - **Cómo dejar de usarlo:** Ajustes → Servidor → Desconectar este móvil. Los datos del hogar en el servidor solo los puede borrar su propietario o quien administra el servidor.
