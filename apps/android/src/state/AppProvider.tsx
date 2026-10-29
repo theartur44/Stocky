@@ -12,6 +12,7 @@ import * as notifications from '../integrations/notifications';
 import type { ChangeScope, ServiceContext } from '../services/context';
 import { createInventoryService, type InventoryService } from '../services/inventoryService';
 import { createPlacesService, type PlacesService } from '../services/placesService';
+import { createBackupService, type BackupService } from '../services/backupService';
 import { createHistoryService, type HistoryService } from '../services/historyService';
 import { createPrivacyService, type PrivacyService } from '../services/privacyService';
 import { createRecipeService, type RecipeService } from '../services/recipeService';
@@ -25,6 +26,7 @@ export interface Services {
   inventory: InventoryService;
   places: PlacesService;
   history: HistoryService;
+  backup: BackupService;
   shopping: ShoppingService;
   settings: SettingsService;
   recipes: RecipeService;
@@ -60,6 +62,7 @@ function buildServices(ctx: ServiceContext): Services {
     inventory,
     places: createPlacesService(ctx),
     history: createHistoryService(ctx),
+    backup: createBackupService(ctx),
     shopping: createShoppingService(ctx),
     settings: createSettingsService(ctx),
     recipes: createRecipeService(ctx, inventory),

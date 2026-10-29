@@ -15,6 +15,7 @@ import { CURRENT_VERSION, REPO_URL, useUpdates } from '../state/UpdateProvider';
 import { useToast } from '../ui/toast';
 import { errorMessage } from '../state/errors';
 import type { Settings } from '../services/settingsService';
+import { exportBackup, exportInventoryCsv, pickBackupText } from '../ui/backup';
 import { Body, Button, Card, ChipGroup, Notice, PressableScale, Screen, SwitchRow, Title } from '../ui/components';
 import { ACCENTS, font, spacing, useTheme } from '../ui/theme';
 
@@ -119,6 +120,32 @@ export default function SettingsScreen() {
     await update({ notificationsEnabled: enabled });
     await syncNotifications();
   };
+
+  const runBackup = async (fn: () => Promise<void>) => {
+    try {
+      await fn();
+    } catch (e) {
+      setMessage({ text: errorMessage(e), tone: 'danger' });
+    }
+  };
+
+  const importBackup = () =>
+    runBackup(async () => {
+      const text = await pickBackupText();
+      if (text === null) return;
+      services.backup.parseBackup(text); // falla aquí si no es una copia, antes de preguntar
+      Alert.alert(t('backup.importTitle'), t('backup.importMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('backup.import'),
+          onPress: () =>
+            void runBackup(async () => {
+              const r = await services.backup.importData(text);
+              setMessage({ text: t('backup.imported', { count: r.imported, skipped: r.skipped }), tone: 'neutral' });
+            }),
+        },
+      ]);
+    });
 
   const deleteAll = () =>
     Alert.alert(t('settings.deleteAllTitle'), t('settings.deleteAllMessage'), [
@@ -251,6 +278,14 @@ export default function SettingsScreen() {
           value={String(settings.recipeMaxMinutes)}
           onChange={(v) => void update({ recipeMaxMinutes: Number(v) })}
         />
+      </Card>
+
+      <Card>
+        <Title>{t('backup.title')}</Title>
+        <Body muted>{t('backup.info')}</Body>
+        <Button label={t('backup.export')} icon="download-outline" variant="secondary" onPress={() => void runBackup(() => exportBackup(services))} />
+        <Button label={t('backup.import')} icon="push-outline" variant="secondary" onPress={() => void importBackup()} />
+        <Button label={t('backup.csv.export')} icon="grid-outline" variant="ghost" onPress={() => void runBackup(() => exportInventoryCsv(services))} />
       </Card>
 
       <Card>

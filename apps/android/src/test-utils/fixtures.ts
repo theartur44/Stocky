@@ -7,6 +7,7 @@ import { openTestDatabase } from '../data/testing/nodeConnection';
 import type { ChangeScope, ServiceContext } from '../services/context';
 import { createInventoryService } from '../services/inventoryService';
 import { createPlacesService } from '../services/placesService';
+import { createBackupService } from '../services/backupService';
 import { createHistoryService } from '../services/historyService';
 import { createPrivacyService } from '../services/privacyService';
 import { createSettingsService } from '../services/settingsService';
@@ -41,6 +42,7 @@ export async function setupServices(nowIso = '2026-10-13T10:00:00') {
     inventory: createInventoryService(ctx),
     places: createPlacesService(ctx),
     history: createHistoryService(ctx),
+    backup: createBackupService(ctx),
     shopping: createShoppingService(ctx),
     settings: createSettingsService(ctx),
     privacy: createPrivacyService(ctx),
