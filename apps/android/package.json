@@ -4,6 +4,7 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
+    "decode-uri-component": "file:vendor/decode-uri-component-0.5.1.tgz",
     "expo": "~57.0.28",
     "expo-asset": "~57.0.19",
     "expo-blur": "~57.0.3",
@@ -62,5 +63,8 @@
       "<rootDir>/android/",
       "<rootDir>/ios/"
     ]
+  },
+  "overrides": {
+    "decode-uri-component": "$decode-uri-component"
   }
 }
