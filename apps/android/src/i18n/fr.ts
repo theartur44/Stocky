@@ -116,6 +116,7 @@ export const fr: Messages = {
     consumeOne: 'Consommer une unité de {name}',
   },
   product: {
+    defaultLocationHelp: 'Où vous rangez ce produit. Si vous le changez, ce qui se trouve à l’emplacement précédent est déplacé aussi.',
     openDays: 'Se conserve après ouverture (jours)',
     openDaysHelp: 'Quand vous marquez un emballage comme ouvert, sa date devient aujourd’hui plus ces jours.',
     newTitle: 'Nouveau produit',

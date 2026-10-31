@@ -115,6 +115,7 @@ export const es = {
     consumeOne: 'Gastar uno de {name}',
   },
   product: {
+    defaultLocationHelp: 'Dónde guardas este producto. Si lo cambias, lo que hay en el sitio anterior se mueve también.',
     openDays: 'Dura abierto (días)',
     openDaysHelp: 'Al marcar un envase como abierto, su fecha pasa a ser hoy más estos días.',
     newTitle: 'Nuevo producto',

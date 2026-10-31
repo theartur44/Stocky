@@ -116,6 +116,7 @@ export const en: Messages = {
     consumeOne: 'Use one {name}',
   },
   product: {
+    defaultLocationHelp: 'Where you keep this product. If you change it, what is in the previous place moves too.',
     openDays: 'Keeps once open (days)',
     openDaysHelp: 'When you mark a pack as open, its date becomes today plus these days.',
     newTitle: 'New product',

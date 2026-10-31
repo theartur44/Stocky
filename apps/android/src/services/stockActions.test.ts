@@ -62,3 +62,19 @@ describe('acciones sobre el inventario', () => {
     expect((await s.inventory.getLot(l.id))!.openedOn).toBe('2026-10-13');
   });
 });
+
+describe('cambiar el sitio de un producto', () => {
+  it('mueve también lo que había en el sitio anterior, no lo que está en otros sitios', async () => {
+    const s = await setupServices();
+    const cafe = await s.places.create({ name: 'Zona cafetera', kind: 'pantry' });
+    const { product, lot: inCafe } = await s.inventory.addStock(
+      { product: { ...milk, defaultLocation: 'pantry', defaultPlaceId: cafe.id } },
+      lot({ location: 'pantry', placeId: cafe.id }),
+    );
+    const { lot: inFreezer } = await s.inventory.addStock({ productId: product.id }, lot({ location: 'freezer', placeId: DEFAULT_PLACES[1]!.id }));
+    const p = (await s.inventory.getProduct(product.id))!;
+    await s.inventory.updateProduct(product.id, { ...p, defaultLocation: 'fridge', defaultPlaceId: DEFAULT_PLACES[0]!.id });
+    expect(await s.inventory.getLot(inCafe.id)).toMatchObject({ placeId: DEFAULT_PLACES[0]!.id, location: 'fridge' });
+    expect(await s.inventory.getLot(inFreezer.id)).toMatchObject({ placeId: DEFAULT_PLACES[1]!.id, location: 'freezer' });
+  });
+});

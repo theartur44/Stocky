@@ -127,6 +127,9 @@ export function ProductFields({
         kind={value.defaultLocation}
         onChange={(p) => onChange({ ...value, defaultPlaceId: p.id, defaultLocation: p.kind })}
       />
+      <Body muted small>
+        {t('product.defaultLocationHelp')}
+      </Body>
       {value.defaultUnit !== 'unit' ? (
         <TextField
           label={`${t('product.pack')} (${t(`units.${value.defaultUnit}`)})`}

@@ -147,11 +147,27 @@ export function createInventoryService(ctx: ServiceContext) {
       }
     },
 
+    /**
+     * Guarda los cambios del producto. Si cambia su sitio habitual, lo que había en
+     * el sitio anterior se mueve también (lo que esté en otros sitios se queda donde está).
+     */
     async updateProduct(id: string, input: ProductInput): Promise<Product> {
       const p = validateProductInput(input);
       try {
-        const n = await db.transaction((tx) => productRepo.update(tx, id, p, nowIso(ctx)));
-        if (n === 0) throw new AppError('not_found', 'Product not found');
+        await db.transaction(async (tx) => {
+          const before = await productRepo.get(tx, id);
+          if (!before) throw new AppError('not_found', 'Product not found');
+          const now = nowIso(ctx);
+          await productRepo.update(tx, id, p, now);
+          const after = (await productRepo.get(tx, id))!;
+          if (after.defaultPlaceId !== before.defaultPlaceId) {
+            await tx.run(
+              `UPDATE stock_lots SET place_id = ?, location = ?, updated_at = ?
+               WHERE product_id = ? AND (place_id IS ? OR place_id IS NULL)`,
+              [after.defaultPlaceId, after.defaultLocation, now, id, before.defaultPlaceId],
+            );
+          }
+        });
       } catch (e) {
         if (isUniqueViolation(e)) throw new AppError('conflict', 'Barcode exists', { barcode: 'errors.barcodeExists' });
         throw e;
