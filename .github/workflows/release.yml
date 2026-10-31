@@ -95,7 +95,23 @@ jobs:
     env:
       TAG: ${{ github.event.release.tag_name || inputs.version }}
       VERSION: ${{ needs.build.outputs.version }}
+      # Huella (SHA-256) del certificado con el que se firman todas las versiones. Es pública
+      # (va dentro de cada APK). Si cambiara, Android no instalaría la actualización encima y
+      # habría que desinstalar la app: por eso se comprueba antes de publicar.
+      EXPECTED_CERT_SHA256: a67e184a0da4bce04c442ae394f2fa62e0678b543060d943202a317a35e3f93d
     steps:
+      - name: La versión es mayor que la última publicada
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName 2>/dev/null || true)
+          latest=${latest#v}
+          if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$latest" "$VERSION" | sort -V | tail -1)" != "$VERSION" -o "$latest" = "$VERSION" ]; then
+            echo "::error::La versión $VERSION no es mayor que la última publicada ($latest): Android no la instalaría encima."
+            exit 1
+          fi
+
       - uses: actions/download-artifact@v4
         with:
           name: apk-sin-firmar
@@ -120,7 +136,12 @@ jobs:
           "$tools/apksigner" sign --ks "$ks" --ks-key-alias "$STOCKY_KEY_ALIAS" \
             --ks-pass env:STOCKY_KEYSTORE_PASSWORD --key-pass env:STOCKY_KEY_PASSWORD \
             --out "$name" app-release.apk
-          "$tools/apksigner" verify --print-certs "$name" | grep -i 'SHA-256' || true
+          cert=$("$tools/apksigner" verify --print-certs "$name" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          if [ "$cert" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::El APK no está firmado con el certificado de siempre ($cert). No se publica: no se podría instalar encima."
+            exit 1
+          fi
+          echo "Firmado con el certificado de siempre."
           sha256sum "$name" > "$name.sha256"
 
       - name: Crear la release (lanzamiento manual)
