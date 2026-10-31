@@ -140,7 +140,7 @@ class SyncRecord(Base):
     __table_args__ = (
         Index("ix_sync_records_household_rev", "household_id", "rev"),
         CheckConstraint(
-            "entity IN ('product', 'stock_lot', 'shopping_list', 'shopping_item', 'setting')", name="ck_sync_records_entity"
+            "entity IN ('place', 'product', 'stock_lot', 'shopping_list', 'shopping_item', 'setting')", name="ck_sync_records_entity"
         ),
         CheckConstraint("deleted OR data_enc IS NOT NULL", name="ck_sync_records_data"),
     )

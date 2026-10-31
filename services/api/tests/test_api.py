@@ -314,3 +314,14 @@ def test_sync_is_rate_limited_per_user(api):
     owner = setup_household(api)
     codes = [owner.post("/sync/push", json={"ops": [upsert(uuid.uuid4(), lot())]}).status_code for _ in range(121)]
     assert codes[:120] == [200] * 120 and codes[120] == 429
+
+
+def test_every_announced_entity_can_be_stored(api, client):
+    # Lo que /health anuncia tiene que caber en la base de datos (la 0.2.0 anunciaba «place»
+    # pero la restricción de sync_records no lo admitía: error 500 al sincronizar los sitios).
+    owner = setup_household(api)
+    entities = client.get("/api/v1/health").json()["entities"]
+    ops = [upsert(uuid.uuid4(), {"name": "x"}, entity=e) for e in entities]
+    res = owner.post("/sync/push", json={"ops": ops})
+    assert res.status_code == 200, res.text
+    assert {r["status"] for r in res.json()["results"]} == {"applied"}
