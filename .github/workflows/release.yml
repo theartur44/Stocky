@@ -136,7 +136,11 @@ jobs:
           "$tools/apksigner" sign --ks "$ks" --ks-key-alias "$STOCKY_KEY_ALIAS" \
             --ks-pass env:STOCKY_KEYSTORE_PASSWORD --key-pass env:STOCKY_KEY_PASSWORD \
             --out "$name" app-release.apk
-          cert=$("$tools/apksigner" verify --print-certs "$name" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          # Según la versión de apksigner la línea empieza por «Signer #1» o «Signer (minSdkVersion=…)»:
+          # se toman todas las huellas y tiene que haber exactamente una, la de siempre.
+          certs=$("$tools/apksigner" verify --print-certs "$name" | sed -n 's/.*certificate SHA-256 digest: //p' | sort -u)
+          echo "Huellas del certificado: $certs"
+          cert=$certs
           if [ "$cert" != "$EXPECTED_CERT_SHA256" ]; then
             echo "::error::El APK no está firmado con el certificado de siempre ($cert). No se publica: no se podría instalar encima."
             exit 1
