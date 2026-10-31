@@ -22,7 +22,8 @@
       },
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.REQUEST_INSTALL_PACKAGES"
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",

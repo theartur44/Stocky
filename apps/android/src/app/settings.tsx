@@ -300,9 +300,14 @@ export default function SettingsScreen() {
         <Body>{t('settings.version', { version: Constants.expoConfig?.version ?? '—' })}</Body>
         {updates.available ? (
           <Button
-            label={t('updates.bannerTitle', { version: updates.available.version })}
+            label={
+              updates.downloading === undefined
+                ? t('updates.bannerTitle', { version: updates.available.version })
+                : t('updates.downloading', { percent: Math.round((updates.downloading ?? 0) * 100) })
+            }
             icon="download-outline"
-            onPress={() => void Linking.openURL(updates.available!.apkUrl)}
+            disabled={updates.downloading !== undefined}
+            onPress={() => void updates.install()}
           />
         ) : null}
         <SwitchRow

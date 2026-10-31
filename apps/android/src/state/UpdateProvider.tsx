@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AppState } from 'react-native';
 
 import { isNewerVersion } from '../domain/version';
+import { downloadAndInstall } from '../integrations/apkInstaller';
 import { fetchLatestRelease, UPDATE_REPO_RE, type ReleaseInfo } from '../integrations/updates';
 import { useApp } from './AppProvider';
 
@@ -22,6 +23,10 @@ interface UpdateContextValue {
   checking: boolean;
   checkNow(): Promise<ReleaseInfo | null>;
   dismiss(): void;
+  /** Descarga la versión nueva y abre el instalador (o el navegador si no se puede). */
+  install(): Promise<void>;
+  /** Progreso de la descarga (0-1), `null` si no se sabe el tamaño; `undefined` si no se está descargando. */
+  downloading: number | null | undefined;
 }
 
 const UpdateContext = createContext<UpdateContextValue | null>(null);
@@ -64,10 +69,22 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, [check]);
 
+  const [downloading, setDownloading] = useState<number | null | undefined>(undefined);
+
   const value = useMemo<UpdateContextValue>(() => {
     const latest = settings.updateLatest;
     const available = latest && isNewerVersion(latest.version, CURRENT_VERSION) ? latest : null;
     return {
+      downloading,
+      install: async () => {
+        if (!available || downloading !== undefined) return;
+        setDownloading(null);
+        try {
+          await downloadAndInstall(available.apkUrl, setDownloading);
+        } finally {
+          setDownloading(undefined);
+        }
+      },
       available,
       showBanner: !!available && settings.updateCheck && settings.updateDismissed !== available.version,
       checking,
@@ -76,7 +93,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
         if (available) void services.settings.update({ updateDismissed: available.version });
       },
     };
-  }, [settings.updateLatest, settings.updateCheck, settings.updateDismissed, checking, check, services]);
+  }, [settings.updateLatest, settings.updateCheck, settings.updateDismissed, checking, check, services, downloading]);
 
   return <UpdateContext.Provider value={value}>{children}</UpdateContext.Provider>;
 }

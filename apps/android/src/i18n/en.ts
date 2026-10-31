@@ -651,6 +651,7 @@ export const en: Messages = {
     codeField: 'Verification code',
   },
   updates: {
+    downloading: 'Downloading… {percent}%',
     bannerTitle: 'New version {version} available',
     bannerBody: 'Download it and install it over the current one: your data is kept.',
     download: 'Download',

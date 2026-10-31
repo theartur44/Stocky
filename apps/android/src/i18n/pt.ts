@@ -651,6 +651,7 @@ export const pt: Messages = {
     codeField: 'Código de verificação',
   },
   updates: {
+    downloading: 'Baixando… {percent}%',
     bannerTitle: 'Nova versão {version} disponível',
     bannerBody: 'Baixe e instale por cima: seus dados são mantidos.',
     download: 'Baixar',

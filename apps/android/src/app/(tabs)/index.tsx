@@ -229,7 +229,14 @@ function UpdateBanner() {
         </View>
         <View style={styles.updateActions}>
           <View style={{ flex: 1 }}>
-            <Button compact label={t('updates.download')} icon="download-outline" onPress={() => void Linking.openURL(release.apkUrl)} />
+            <Button
+              compact
+              label={updates.downloading === undefined ? t('updates.download') : t('updates.downloading', { percent: Math.round((updates.downloading ?? 0) * 100) })}
+              icon="download-outline"
+              loading={updates.downloading === null}
+              disabled={updates.downloading !== undefined}
+              onPress={() => void updates.install()}
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Button

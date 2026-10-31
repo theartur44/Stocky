@@ -650,6 +650,7 @@ export const es = {
     codeField: 'Código de verificación',
   },
   updates: {
+    downloading: 'Descargando… {percent} %',
     bannerTitle: 'Nueva versión {version} disponible',
     bannerBody: 'Descárgala e instálala encima: tus datos se conservan.',
     download: 'Descargar',

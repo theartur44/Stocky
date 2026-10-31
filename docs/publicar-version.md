@@ -40,7 +40,7 @@ Alternativa: *Actions → Publicar versión → Run workflow*, escribiendo la ve
 ## Qué ve quien usa la app
 
 - **Comprobación:** una vez al día, al abrir la app, consulta la última versión publicada. Solo se pide el número de versión; la petición no lleva datos del usuario, aunque GitHub ve la IP, como cualquier web.
-- **Aviso en Inicio:** si hay una versión nueva, aparece un aviso con **Descargar** (abre el APK en el navegador; Android lo descarga y pregunta si instalarlo) y **Novedades**. La X lo oculta hasta la siguiente versión.
+- **Aviso en Inicio:** si hay una versión nueva, aparece un aviso con **Descargar** y **Novedades**. «Descargar» baja el APK dentro de la app (con el porcentaje) y abre el instalador de Android; la primera vez Android pide permitir que Stocky instale aplicaciones. Si algo falla, se abre la descarga en el navegador como antes. La X oculta el aviso hasta la siguiente versión.
 - **Ajustes → Acerca de:** muestra la versión instalada, el botón «Buscar actualizaciones» y el interruptor para desactivar el aviso.
 - **Datos:** al instalar encima se conservan todos los datos.
 
